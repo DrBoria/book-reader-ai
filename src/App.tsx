@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { DeepSeekBookTaggingAgent } from "./agent/DeepSeekBookTaggingAgent";
+import { LMStudioBookTaggingAgent } from "./agent/LMStudioBookTaggingAgent";
 import { PDFParser } from "./utils/pdfParser";
 import { BookContent, Tag, TaggedContent, ChatMessage } from "./types";
 import { FileUpload } from "./components/FileUpload";
@@ -9,9 +9,9 @@ import { ChatInterface } from "./components/ChatInterface";
 import { TagManager } from "./components/TagManager";
 
 const App: React.FC = () => {
-  const [agent] = useState(() => new DeepSeekBookTaggingAgent(
-    import.meta.env.VITE_OLLAMA_HOST || "http://localhost:11434",
-    import.meta.env.VITE_DEEPSEEK_MODEL || "deepseek-r1:7b"
+  const [agent] = useState(() => new LMStudioBookTaggingAgent(
+    import.meta.env.VITE_LM_STUDIO_HOST || "http://100.105.253.249:1234",
+    import.meta.env.VITE_DEEPSEEK_MODEL || "deepseek/deepseek-r1-0528-qwen3-8b"
   ));
   const [pdfParser] = useState(() => new PDFParser());
   const [currentBook, setCurrentBook] = useState<BookContent | null>(null);
@@ -96,10 +96,10 @@ const App: React.FC = () => {
           <div className="flex justify-between items-center">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                📚 Book Reader AI Agent (DeepSeek R1)
+                📚 Book Reader AI Agent (DeepSeek R1 + LM Studio)
               </h1>
               <p className="text-gray-600 mt-1">
-                Local AI agent for PDF book analysis powered by DeepSeek R1
+                AI agent for PDF book analysis powered by DeepSeek R1 via LM Studio
               </p>
             </div>
             <div className="text-right">
@@ -107,10 +107,10 @@ const App: React.FC = () => {
                 <div className="text-yellow-600">🔄 Checking model...</div>
               )}
               {modelAvailable === true && (
-                <div className="text-green-600">✅ DeepSeek R1 Ready</div>
+                <div className="text-green-600">✅ LM Studio + DeepSeek R1 Ready</div>
               )}
               {modelAvailable === false && (
-                <div className="text-red-600">❌ DeepSeek R1 Unavailable</div>
+                <div className="text-red-600">❌ LM Studio Unavailable</div>
               )}
             </div>
           </div>

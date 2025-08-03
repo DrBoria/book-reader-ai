@@ -75,7 +75,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessi
       />
       
       <div className="mt-6 text-sm text-gray-500">
-        <p className="mb-2">🤖 DeepSeek R1 AI agent automatically:</p>
+        <p className="mb-2">🤖 DeepSeek R1 + LM Studio AI agent automatically:</p>
         <ul className="text-left max-w-md mx-auto space-y-1">
           <li>• 🕒 Extracts temporal references</li>
           <li>• 👥 Identifies mentioned people</li>
