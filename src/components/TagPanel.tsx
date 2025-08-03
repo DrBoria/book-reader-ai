@@ -1,9 +1,10 @@
 import React, { useState } from "react";
-import { Tag, TaggedContent, TagCloud } from "../types";
+import { Tag, TaggedContent, TagCloud, TagCategory } from "../types";
 import { Hash, List, Cloud } from "lucide-react";
 
 interface TagPanelProps {
   tags: Tag[];
+  categories: TagCategory[];
   taggedContent: TaggedContent[];
   selectedTag: string | null;
   onTagSelect: (tagId: string) => void;
@@ -11,6 +12,7 @@ interface TagPanelProps {
 
 export const TagPanel: React.FC<TagPanelProps> = ({
   tags,
+  categories,
   taggedContent,
   selectedTag,
   onTagSelect
@@ -19,7 +21,8 @@ export const TagPanel: React.FC<TagPanelProps> = ({
 
   const getTagCounts = (): TagCloud[] => {
     const counts = tags.map(tag => {
-      const count = taggedContent.filter(content => content.tagId === tag.id).length;
+      // Use server-provided contentCount if available, otherwise calculate from taggedContent
+      const count = tag.contentCount ?? taggedContent.filter(content => content.tagId === tag.id).length;
       return {
         tag,
         count,
@@ -34,32 +37,51 @@ export const TagPanel: React.FC<TagPanelProps> = ({
   const maxWeight = Math.max(...tagClouds.map(tc => tc.weight));
 
   const renderTagList = () => (
-    <div className="space-y-2">
-      {tagClouds.map(({ tag, count }) => (
-        <button
-          key={tag.id}
-          onClick={() => onTagSelect(tag.id)}
-          className={`w-full text-left p-3 rounded-lg border transition-all ${
-            selectedTag === tag.id
-              ? "border-blue-500 bg-blue-50"
-              : "border-gray-200 hover:border-gray-300 bg-white"
-          }`}
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <div
-                className="w-3 h-3 rounded-full mr-2"
-                style={{ backgroundColor: tag.color }}
-              />
-              <span className="font-medium text-gray-900">{tag.name}</span>
+    <div className="space-y-4">
+      {categories.map(category => {
+        const categoryTags = tagClouds.filter(({ tag }) => tag.categoryId === category.id);
+        const totalCount = categoryTags.reduce((sum, { count }) => sum + count, 0);
+        
+        return (
+          <div key={category.id} className="space-y-2">
+            {/* Category Header */}
+            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+              <div className="flex items-center">
+                <div
+                  className="w-3 h-3 rounded-full mr-2"
+                  style={{ backgroundColor: category.color }}
+                />
+                <span className="font-medium text-gray-900">{category.name}</span>
+              </div>
+              <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                {totalCount}
+              </span>
             </div>
-            <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
-              {count}
-            </span>
+            
+            {/* Category Tags */}
+            <div className="ml-4 space-y-1">
+              {categoryTags.map(({ tag, count }) => (
+                <button
+                  key={tag.id}
+                  onClick={() => onTagSelect(tag.id)}
+                  className={`w-full text-left p-2 rounded border transition-all ${
+                    selectedTag === tag.id
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 hover:border-gray-300 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-gray-900">{tag.name}</span>
+                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                      {count}
+                    </span>
+                  </div>
+                </button>
+              ))}
+            </div>
           </div>
-          <p className="text-sm text-gray-600 mt-1">{tag.description}</p>
-        </button>
-      ))}
+        );
+      })}
     </div>
   );
 

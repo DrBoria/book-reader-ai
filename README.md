@@ -1,240 +1,300 @@
-# 📚 Book Reader AI Agent (DeepSeek R1)
+# Book Reader AI Agent
 
-Интеллектуальная система анализа и разметки PDF книг на базе **DeepSeek R1**. Полностью локальный AI агент, построенный на TypeScript, React и архитектуре LangGraph. Автоматически анализирует PDF книги и размечает контент по времени, людям, темам, локациям и пользовательским тегам.
+AI-powered book analysis system with real-time tagging and intelligent chat interface.
 
-🔒 **Полная приватность**: все данные обрабатываются локально, ничего не отправляется в интернет!
+## Architecture
 
-## ✨ Возможности
+This application consists of:
+- **Frontend**: React + TypeScript (Vite)
+- **Backend**: Express.js + TypeScript
+- **Database**: Neo4j (Graph Database)
+- **Queue**: Redis + Bull Queue
+- **AI**: LM Studio + DeepSeek R1 model
+- **Real-time**: WebSocket (Socket.io)
 
-### 🤖 Анализ на базе DeepSeek R1
-- Автоматическая разметка контента с помощью локальной AI модели
-- Умное извлечение временных ссылок, людей, тем и локаций
-- Контекстуальное понимание содержания книги
-- Оценка релевантности размеченного контента
-- **Архитектура LangGraph** - граф узлов и состояний для надежной обработки
+## Features
 
-### 📖 Book Processing
-- PDF file upload and text extraction
-- Page-by-page content analysis
-- Metadata extraction (title, author)
-- Support for various PDF formats
+1. **PDF Upload & Processing**: Upload books and process them asynchronously
+2. **AI Tagging**: Automatic content tagging using DeepSeek R1 via LM Studio
+3. **Graph Database**: Store tagged content in Neo4j for fast retrieval
+4. **Real-time Updates**: See processing progress in real-time
+5. **Smart Chat**: Ask questions about your books with AI-powered responses
+6. **Custom Tags**: Create and manage your own content tags
 
-### 🏷️ Smart Tagging System
-- **Default Tags**: Time, People, Theme, Location
-- **Custom Tags**: Add your own categories
-- Tag visualization (list view and tag cloud)
-- Color-coded tag system
-- Tag relevance scoring
+## Prerequisites
 
-### 💬 Interactive Chat
-- Ask questions about your book content
-- Get answers with page references and quotes
-- Context-aware responses
-- Search across all tagged content
+### Required Software
 
-### 🎨 Modern UI
-- Clean, responsive React interface
-- Real-time processing feedback
-- Intuitive tag management
-- Mobile-friendly design
+1. **Node.js** (v18 or later)
+2. **Neo4j** (v5.x)
+3. **Redis** (v6.x or later)
+4. **LM Studio** with DeepSeek R1 model
 
-## 🚀 Быстрый старт
+### Setup Instructions
 
-### Предварительные требования
-- Node.js 18+ 
-- **Ollama** для запуска DeepSeek R1
-- Минимум 8 ГБ RAM (рекомендуется)
+#### 1. Install Dependencies
 
-### Установка
+```bash
+# Frontend
+npm install
 
-1. **Установить Ollama и DeepSeek R1**
-   ```bash
-   # macOS
-   brew install ollama
-   
-   # Linux  
-   curl -fsSL https://ollama.com/install.sh | sh
-   
-   # Запустить Ollama
-   ollama serve
-   
-   # Скачать DeepSeek R1
-   ollama pull deepseek-r1:7b
-   ```
+# Backend
+cd server
+npm install
+cd ..
+```
 
-2. **Установить зависимости проекта**
-   ```bash
-   pnpm install
-   ```
+#### 2. Setup Database Services (Docker)
 
-3. **Настроить переменные окружения**
-   Создайте файл `.env` в корне проекта:
-   ```env
-   VITE_OLLAMA_HOST=http://localhost:11434
-   VITE_DEEPSEEK_MODEL=deepseek-r1:7b
-   ```
+Используем Docker Compose для запуска Neo4j и Redis:
 
-4. **Запустить проект**
-   ```bash
-   pnpm dev
-   ```
+```bash
+# Запустить все сервисы в фоне
+cd server
+docker-compose up -d
 
-5. **Открыть в браузере**
-   Перейдите на `http://localhost:3000`
+# Проверить статус сервисов
+docker-compose ps
 
-📖 **Подробная инструкция:** см. [DEEPSEEK_SETUP.md](./DEEPSEEK_SETUP.md)
+# Посмотреть логи при необходимости
+docker-compose logs neo4j
+docker-compose logs redis
+```
+
+**Альтернативная установка без Docker:**
+
+<details>
+<summary>Ручная установка Neo4j и Redis</summary>
+
+**Neo4j:**
+1. Download and install Neo4j Desktop
+2. Create a new database  
+3. Set password for 'neo4j' user
+4. Start the database
+
+**Redis:**
+```bash
+# macOS с Homebrew
+brew install redis
+brew services start redis
+
+# Ubuntu/Debian
+sudo apt install redis-server
+sudo systemctl start redis
+```
+</details>
+
+#### 3. Setup LM Studio
+
+1. Download LM Studio from https://lmstudio.ai/
+2. Install DeepSeek R1 model (or compatible model)
+3. Start local server on port 1234
+4. Verify model is loaded and accessible
+
+#### 4. Environment Configuration
+
+Create `.env` file in the `server` directory:
+
+```bash
+cp server/.env.example server/.env
+```
+
+Edit `server/.env` with your configuration:
+
+```env
+# Server Configuration
+PORT=3001
+NODE_ENV=development
+
+# Redis Configuration
+REDIS_HOST=localhost
+REDIS_PORT=6379
+REDIS_PASSWORD=
+
+# Neo4j Configuration
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=your_password_here
+
+# LM Studio Configuration
+LM_STUDIO_HOST=http://localhost:1234
+LM_STUDIO_MODEL=deepseek/deepseek-r1-0528-qwen3-8b
+
+# File Upload
+MAX_FILE_SIZE=10485760
+UPLOAD_DIR=./uploads
+```
+
+Create `.env.local` file in the root directory:
+
+```env
+VITE_API_BASE_URL=http://localhost:3001/api
+```
+
+## Running the Application
+
+### Быстрый старт с Docker
+
+```bash
+# 1. Запустить базы данных
+cd server
+./scripts/setup.sh
+
+# 2. Настроить LM Studio
+# Открыть LM Studio, загрузить модель DeepSeek R1, запустить локальный сервер
+
+# 3. Запустить backend (новый терминал)
+npm run dev
+
+# 4. Запустить frontend (новый терминал)
+cd ..
+npm run dev
+```
+
+### Подробные шаги
+
+#### 1. Start Backend Services
+
+```bash
+# Запустить Neo4j и Redis с Docker
+cd server
+docker-compose up -d
+
+# Или использовать setup скрипт для автоматической настройки
+./scripts/setup.sh
+
+# Запустить LM Studio сервер
+# Открыть LM Studio, загрузить DeepSeek R1 модель, запустить локальный сервер
+```
+
+#### 2. Start Application
+
+```bash
+# Terminal 1: Start backend server  
+cd server
+npm run dev
+
+# Terminal 2: Start frontend
+cd ..
+npm run dev
+```
+
+#### 3. Access Application
+
+- **Frontend**: http://localhost:5173
+- **Backend API**: http://localhost:3001
+- **Health Check**: http://localhost:3001/health  
+- **Neo4j Browser**: http://localhost:7474 (neo4j/password)
+- **Redis**: localhost:6379
 
 ## Usage
 
-### 1. Upload a Book
-- Click the upload area or drag & drop a PDF file
-- The AI agent will automatically process and analyze the content
-- Wait for the tagging process to complete
+1. **Upload a Book**: Drop a PDF file to start processing
+2. **Monitor Progress**: Watch real-time processing updates
+3. **Explore Tags**: Browse content by time, people, themes, locations
+4. **Create Custom Tags**: Add your own content categories
+5. **Chat with AI**: Ask questions about your books
+6. **Search Content**: Find specific information across all books
 
-### 2. Explore Tags
-- **List View**: Browse tags with counts and descriptions
-- **Cloud View**: Visual tag cloud with size based on frequency
-- Click any tag to see related content
+## API Endpoints
 
-### 3. View Tagged Content
-- See all excerpts related to the selected tag
-- Sort by page number or relevance score
-- View full page context for each excerpt
-- Read AI-generated explanations
+### Books
+- `POST /api/books/upload` - Upload and process a book
+- `GET /api/books` - Get all books
+- `GET /api/books/:id` - Get specific book
+- `GET /api/books/:id/job-status` - Get processing status
 
-### 4. Chat with Your Book
-- Ask questions about any topic in the book
-- Get responses with specific page references
-- Examples:
-  - "What time periods are covered?"
-  - "Who are the main characters?"
-  - "Summarize the themes in chapter 3"
+### Tags
+- `GET /api/tags` - Get all tags
+- `POST /api/tags` - Create custom tag
+- `GET /api/tags/:id/content` - Get content by tag
+- `DELETE /api/tags/:id` - Delete custom tag
 
-### 5. Manage Tags
-- Add custom tags for specific topics
-- Choose colors and descriptions
-- Create domain-specific categories
+### Search
+- `POST /api/search/content` - Search content
+- `POST /api/search/chat` - Chat with AI
 
-## 🏗️ Архитектура
+## Troubleshooting
 
-### AI Agent Core (`DeepSeekBookTaggingAgent.ts`)
-- **LangGraph архитектура** - граф состояний и узлов для надежной обработки
-- Координирует рабочий процесс анализа PDF
-- Управляет состоянием и обработкой тегов
-- Взаимодействует с локальным DeepSeek R1 через Ollama
-- Обеспечивает возможности вопросов-ответов
+### Common Issues
 
-### LangGraph State Machine (`StateGraph.ts`)
-- Собственная реализация паттернов LangGraph для браузера
-- Управление состоянием с редьюсерами
-- Узлы (nodes) для обработки логики
-- Ребра (edges) для маршрутизации между узлами
-- Условная маршрутизация на основе состояния
+1. **LM Studio Connection Failed**
+   - Ensure LM Studio is running on correct port
+   - Check model is loaded and server started
+   - Verify firewall settings
 
-### PDF Processing (`pdfParser.ts`)
-- Extracts text from PDF files
-- Splits content into logical pages
-- Handles metadata extraction
-- Supports various PDF structures
+2. **Neo4j Connection Failed**
+   - Ensure Docker Compose is running: `docker-compose ps`
+   - Restart Neo4j: `docker-compose restart neo4j`  
+   - Check Neo4j logs: `docker-compose logs neo4j`
+   - Verify credentials in .env (default: neo4j/password)
 
-### React Components
-- **App**: Main application container
-- **FileUpload**: PDF upload interface
-- **TagPanel**: Tag visualization and selection
-- **ContentDisplay**: Tagged content presentation
-- **ChatInterface**: Interactive Q&A system
-- **TagManager**: Custom tag creation
+3. **Redis Connection Failed**
+   - Ensure Docker Compose is running: `docker-compose ps`
+   - Restart Redis: `docker-compose restart redis`
+   - Check Redis logs: `docker-compose logs redis`
 
-### Type System
-- Comprehensive TypeScript interfaces
-- Type-safe AI agent operations
-- Structured data models for books, tags, and content
+4. **File Upload Fails**
+   - Check file size limits
+   - Ensure upload directory exists
+   - Verify permissions
 
-## Project Structure
+### Debug Mode
 
+Set `NODE_ENV=development` in server/.env for detailed logs.
+
+### Docker Commands
+
+```bash
+# Остановить все сервисы
+docker-compose down
+
+# Перезапустить сервисы  
+docker-compose restart
+
+# Просмотр логов
+docker-compose logs -f
+
+# Очистить данные (ВНИМАНИЕ: удалит все данные!)
+docker-compose down -v
 ```
-src/
-├── agent/
-│   └── BookTaggingAgent.ts    # AI agent core logic
-├── components/
-│   ├── App.tsx               # Main application
-│   ├── FileUpload.tsx        # File upload interface
-│   ├── TagPanel.tsx          # Tag visualization
-│   ├── ContentDisplay.tsx    # Content presentation
-│   ├── ChatInterface.tsx     # Chat functionality
-│   └── TagManager.tsx        # Tag management
-├── types/
-│   └── index.ts              # TypeScript interfaces
-├── utils/
-│   └── pdfParser.ts          # PDF processing
-└── main.tsx                  # React entry point
-```
-
-## Technical Details
-
-### AI Processing Pipeline
-1. **PDF Upload** → Text extraction and page segmentation
-2. **Content Analysis** → AI-powered content understanding
-3. **Tag Extraction** → Identification of relevant content for each tag
-4. **Context Generation** → AI explanations for tagged content
-5. **Relevance Scoring** → Quality assessment of tag matches
-
-### Tag Categories
-- **Time**: Temporal references (dates, periods, eras)
-- **People**: Mentioned individuals, characters, historical figures
-- **Theme**: Topics, concepts, main ideas
-- **Location**: Places, geographical references
-- **Custom**: User-defined categories
-
-## 🔌 Интеграция с AI
-
-Система использует **DeepSeek R1** через Ollama для:
-- Анализа контента и разметки тегами
-- Генерации объяснений контекста  
-- Ответов на вопросы по тексту
-- Оценки релевантности найденного контента
-
-### Преимущества локального DeepSeek R1:
-- 🔒 **Полная приватность** - данные не покидают ваш компьютер
-- 💰 **Бесплатно** - никаких API ключей и подписок
-- ⚡ **Быстро** - обработка без сетевых задержек
-- 🌐 **Офлайн** - работает без интернета
 
 ## Development
 
-### Scripts
-- `npm run dev` - Start development server
-- `npm run build` - Build for production
-- `npm run preview` - Preview production build
+### Project Structure
 
-### Technologies
-- **Frontend**: React 18, TypeScript, Tailwind CSS
-- **AI**: DeepSeek R1, Ollama, собственная реализация LangGraph паттернов
-- **PDF**: PDF.js (pdfjs-dist) для браузерной обработки
-- **Build**: Vite, PostCSS
-- **Icons**: Lucide React
-- **Архитектура**: LangGraph-inspired State Machine
+```
+book-reader-ai/
+├── src/                    # Frontend React app
+│   ├── components/         # UI components
+│   ├── services/          # API services
+│   ├── types/             # TypeScript types
+│   └── utils/             # Utilities
+├── server/                # Backend Express app
+│   ├── src/
+│   │   ├── database/      # Neo4j connection
+│   │   ├── repositories/  # Data access layer
+│   │   ├── routes/        # API endpoints
+│   │   ├── services/      # Business logic
+│   │   └── types/         # Server types
+│   └── uploads/           # File storage
+└── README.md
+```
 
-## Future Enhancements
+### Adding Features
 
-- [ ] Multiple book library management
-- [ ] Export tagged content to various formats
-- [ ] Advanced search and filtering
-- [ ] Book comparison features
-- [ ] Collaborative tagging
-- [ ] Integration with note-taking apps
-- [ ] OCR support for scanned PDFs
-- [ ] Multi-language support
+1. **New Tag Types**: Extend Tag interface and update AI prompts
+2. **Additional AI Models**: Modify AITaggingService
+3. **New Content Types**: Update database schema and parsers
+4. **Enhanced Search**: Extend SearchService capabilities
 
 ## Contributing
 
-This project follows the AI agent patterns described in LangGraph documentation. Contributions are welcome for:
-
-- New tag categories
-- UI/UX improvements
-- Performance optimizations
-- Additional AI model support
-- Testing and documentation
+1. Fork the repository
+2. Create feature branch
+3. Make changes
+4. Test thoroughly
+5. Submit pull request
 
 ## License
 

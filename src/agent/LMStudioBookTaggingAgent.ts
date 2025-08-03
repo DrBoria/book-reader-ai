@@ -21,8 +21,10 @@ export class LMStudioBookTaggingAgent {
 
   constructor(lmStudioHost = "http://192.168.1.178:1234", modelName = "deepseek/deepseek-r1-0528-qwen3-8b") {
     // Configure OpenAI client to use LM Studio
+    // Ensure proper URL formatting - remove trailing slash if present
+    const cleanHost = lmStudioHost.replace(/\/$/, '');
     this.openai = new OpenAI({ 
-      baseURL: `${lmStudioHost}/v1`,
+      baseURL: `${cleanHost}/v1`,
       apiKey: "lm-studio", // LM Studio не требует настоящий API ключ
       dangerouslyAllowBrowser: true
     });

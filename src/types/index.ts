@@ -1,9 +1,27 @@
+export interface TagCategory {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  type?: "default" | "custom";
+  tags?: Tag[];  // For grouped responses
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Tag {
   id: string;
   name: string;
-  description: string;
-  color: string;
-  type: "default" | "custom";
+  description?: string;
+  color?: string;
+  type?: "default" | "dynamic";
+  bookId?: string;  // For dynamic tags
+  categoryId?: string;  // For dynamic tags
+  value?: string;
+  confidence?: number;
+  contentCount?: number;  // Server-provided count
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 export interface BookPage {
