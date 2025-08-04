@@ -50,7 +50,7 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
             <p className="text-gray-600 mb-2">by {book.author}</p>
           )}
           <p className="text-sm text-gray-500">
-            {book.pages?.length || book.totalPages || 0} pages • Uploaded {new Date(book.uploadedAt).toLocaleDateString()}
+            {book.pages?.length || 0} pages • Uploaded {new Date(book.uploadedAt).toLocaleDateString()}
           </p>
         </div>
 
@@ -64,8 +64,8 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <strong>Available tags:</strong>
-            <ul className="mt-2 space-y-1">
-              {tags?.slice(0, 4).map(tag => (
+            <ul className="mt-2 space-y-1 max-h-32 overflow-hidden">
+              {tags?.slice(0, 8).map(tag => (
                 <li key={tag.id} className="flex items-center">
                   <div 
                     className="w-2 h-2 rounded-full mr-2"
@@ -74,12 +74,15 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
                   {tag.name}
                 </li>
               )) || <li className="text-gray-500">No tags available</li>}
+              {tags && tags.length > 8 && (
+                <li className="text-gray-400 text-xs">+{tags.length - 8} more tags...</li>
+              )}
             </ul>
           </div>
           <div>
             <strong>Book statistics:</strong>
             <ul className="mt-2 space-y-1 text-gray-600">
-              <li>Total pages: {book?.pages?.length || book?.totalPages || 0}</li>
+              <li>Total pages: {book?.pages?.length || 0}</li>
               <li>Characters: {book?.pages?.reduce((acc, page) => acc + page.text.length, 0) || 0}</li>
               <li>Average page length: {book?.pages?.length ? Math.round(book.pages.reduce((acc, page) => acc + page.text.length, 0) / book.pages.length) : 0} chars</li>
             </ul>

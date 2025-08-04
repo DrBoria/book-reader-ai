@@ -93,6 +93,22 @@ export class TagRepository {
     }
   }
 
+  async bulkDeleteTags(tagIds: string[]): Promise<number> {
+    const session = await database.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (t:Tag)
+        WHERE t.id IN $tagIds
+        DETACH DELETE t
+        RETURN count(t) as deletedCount
+      `, { tagIds });
+      
+      return result.records[0]?.get('deletedCount')?.toNumber() || 0;
+    } finally {
+      await session.close();
+    }
+  }
+
   async createCategory(categoryData: Omit<TagCategory, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
     const session = await database.getSession();
     try {
@@ -212,6 +228,29 @@ export class TagRepository {
         description: category.description || '',
         color: category.color || '#6B7280'
       });
+      
+      return result.records[0].get('tc').properties;
+    } finally {
+      await session.close();
+    }
+  }
+
+  async updateCategoryKeywords(categoryId: string, keywords: string[]): Promise<any> {
+    const session = await database.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (tc:TagCategory {id: $categoryId})
+        SET tc.keywords = $keywords,
+            tc.updatedAt = datetime()
+        RETURN tc
+      `, { 
+        categoryId,
+        keywords
+      });
+      
+      if (result.records.length === 0) {
+        throw new Error('Category not found');
+      }
       
       return result.records[0].get('tc').properties;
     } finally {

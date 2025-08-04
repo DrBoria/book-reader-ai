@@ -113,6 +113,26 @@ router.delete('/:tagId', async (req, res) => {
   }
 });
 
+// Bulk delete tags
+router.delete('/', async (req, res) => {
+  try {
+    const { tagIds } = req.body;
+    
+    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+      return res.status(400).json({ error: 'Tag IDs array is required' });
+    }
+
+    const deletedCount = await tagRepo.bulkDeleteTags(tagIds);
+    res.json({ 
+      message: `${deletedCount} tags deleted successfully`,
+      deletedCount 
+    });
+  } catch (error) {
+    console.error('Error bulk deleting tags:', error);
+    res.status(500).json({ error: 'Failed to delete tags' });
+  }
+});
+
 // Create category
 router.post('/categories', async (req, res) => {
   try {
@@ -132,6 +152,24 @@ router.post('/categories', async (req, res) => {
   } catch (error) {
     console.error('Error creating category:', error);
     res.status(500).json({ error: 'Failed to create category' });
+  }
+});
+
+// Update category keywords
+router.put('/categories/:categoryId/keywords', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    const { keywords } = req.body;
+    
+    if (!Array.isArray(keywords)) {
+      return res.status(400).json({ error: 'Keywords must be an array' });
+    }
+
+    const updatedCategory = await tagRepo.updateCategoryKeywords(categoryId, keywords);
+    res.json(updatedCategory);
+  } catch (error) {
+    console.error('Error updating category keywords:', error);
+    res.status(500).json({ error: 'Failed to update keywords' });
   }
 });
 

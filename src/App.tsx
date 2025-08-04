@@ -4,7 +4,7 @@ import { FileUpload } from "./components/FileUpload";
 import { TagPanel } from "./components/TagPanel";
 import { ContentDisplay } from "./components/ContentDisplay";
 import { ChatInterface } from "./components/ChatInterface";
-import { TagManager } from "./components/TagManager";
+import { CategoryManager } from "./components/TagManager";
 import { BookSelector } from "./components/BookSelector";
 import { SearchScope } from "./components/SearchScope";
 import { bookService } from "./services/bookService";
@@ -22,7 +22,7 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [showTagManager, setShowTagManager] = useState(false);
+  const [showCategoryManager, setShowCategoryManager] = useState(false);
   const [showNewBookUpload, setShowNewBookUpload] = useState(false);
   const [searchScope, setSearchScope] = useState<'all' | 'book' | 'tag'>('all');
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
@@ -65,6 +65,15 @@ const App: React.FC = () => {
     }
   };
 
+  const refreshCategories = async () => {
+    try {
+      const fetchedCategories = await tagService.getAllCategories();
+      setCategories(fetchedCategories);
+    } catch (error) {
+      console.error('Failed to refresh categories:', error);
+    }
+  };
+
   const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
     try {
@@ -103,19 +112,63 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddCustomTag = async (tagData: Omit<Tag, "id" | "type" | "createdAt" | "updatedAt">) => {
+  const handleAddCustomCategory = async (categoryData: { name: string; description?: string; color?: string }) => {
     try {
-      const tagId = await tagService.createTag(tagData);
-      if (tagId) {
-        const updatedTags = await tagService.getAllTags();
+      const category = await tagService.createCategory(categoryData);
+      if (category) {
+        const [updatedCategories, updatedTags] = await Promise.all([
+          tagService.getAllCategories(),
+          tagService.getAllTags()
+        ]);
+        setCategories(updatedCategories);
         setTags(updatedTags);
-        return tagId;
+        return category;
       }
     } catch (error) {
-      console.error('Failed to create tag:', error);
-      alert('Failed to create tag. Please try again.');
+      console.error('Failed to create category:', error);
+      alert('Failed to create category. Please try again.');
     }
     return null;
+  };
+
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      await tagService.deleteTag(tagId);
+      const [updatedCategories, updatedTags] = await Promise.all([
+        tagService.getAllCategories(),
+        tagService.getAllTags()
+      ]);
+      setCategories(updatedCategories);
+      setTags(updatedTags);
+      // Clear selection if deleted tag was selected
+      if (selectedTag === tagId) {
+        setSelectedTag(null);
+        setTaggedContent([]);
+      }
+    } catch (error) {
+      console.error('Failed to delete tag:', error);
+      throw error;
+    }
+  };
+
+  const handleBulkDeleteTags = async (tagIds: string[]) => {
+    try {
+      await tagService.bulkDeleteTags(tagIds);
+      const [updatedCategories, updatedTags] = await Promise.all([
+        tagService.getAllCategories(),
+        tagService.getAllTags()
+      ]);
+      setCategories(updatedCategories);
+      setTags(updatedTags);
+      // Clear selection if deleted tag was selected
+      if (selectedTag && tagIds.includes(selectedTag)) {
+        setSelectedTag(null);
+        setTaggedContent([]);
+      }
+    } catch (error) {
+      console.error('Failed to bulk delete tags:', error);
+      throw error;
+    }
   };
 
   const handleChatMessage = async (message: string) => {
@@ -277,11 +330,6 @@ const App: React.FC = () => {
     }
   };
 
-  const getContentForSelectedTag = (): TaggedContent[] => {
-    if (!selectedTag) return [];
-    return taggedContent.filter(content => content.tagId === selectedTag);
-  };
-
   return (
     <div className="min-h-screen bg-gray-50">
       <header className="bg-white shadow-sm border-b">
@@ -336,20 +384,22 @@ const App: React.FC = () => {
                   <div className="flex justify-between items-center">
                     <h3 className="text-lg font-semibold">Tags</h3>
                     <button
-                      onClick={() => setShowTagManager(true)}
+                      onClick={() => setShowCategoryManager(true)}
                       className="text-blue-600 hover:text-blue-800 text-sm"
                     >
-                      Manage
+                      Manage Categories
                     </button>
                   </div>
                 </div>
-                <div className="p-4">
+                <div className="p-4 max-h-[calc(100vh-550px)] overflow-y-auto">
                   <TagPanel
                     tags={tags}
                     categories={categories}
                     taggedContent={taggedContent}
                     selectedTag={selectedTag}
                     onTagSelect={handleTagSelect}
+                    onDeleteTag={handleDeleteTag}
+                    onBulkDeleteTags={handleBulkDeleteTags}
                   />
                 </div>
               </div>
@@ -394,6 +444,7 @@ const App: React.FC = () => {
                       <ChatInterface
                         messages={chatMessages}
                         onSendMessage={handleChatMessage}
+                        isBookLoaded={books.length > 0}
                       />
                     </div>
                   </div>
@@ -404,11 +455,13 @@ const App: React.FC = () => {
         </div>
       </main>
 
-      {showTagManager && (
-        <TagManager
+      {showCategoryManager && (
+        <CategoryManager
           tags={tags}
-          onAddTag={handleAddCustomTag}
-          onClose={() => setShowTagManager(false)}
+          categories={categories}
+          onAddCategory={handleAddCustomCategory}
+          onClose={() => setShowCategoryManager(false)}
+          onCategoriesUpdate={refreshCategories}
         />
       )}
     </div>

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tag, TaggedContent, TagCloud, TagCategory } from "../types";
-import { Hash, List, Cloud } from "lucide-react";
+import { Hash, List, Cloud, ChevronDown, ChevronRight, X, Trash2 } from "lucide-react";
 
 interface TagPanelProps {
   tags: Tag[];
@@ -8,6 +8,8 @@ interface TagPanelProps {
   taggedContent: TaggedContent[];
   selectedTag: string | null;
   onTagSelect: (tagId: string) => void;
+  onDeleteTag: (tagId: string) => Promise<void>;
+  onBulkDeleteTags: (tagIds: string[]) => Promise<void>;
 }
 
 export const TagPanel: React.FC<TagPanelProps> = ({
@@ -15,9 +17,63 @@ export const TagPanel: React.FC<TagPanelProps> = ({
   categories,
   taggedContent,
   selectedTag,
-  onTagSelect
+  onTagSelect,
+  onDeleteTag,
+  onBulkDeleteTags
 }) => {
   const [viewMode, setViewMode] = useState<"list" | "cloud">("list");
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+  const [selectedTags, setSelectedTags] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  const toggleCategory = (categoryId: string) => {
+    const newCollapsed = new Set(collapsedCategories);
+    if (newCollapsed.has(categoryId)) {
+      newCollapsed.delete(categoryId);
+    } else {
+      newCollapsed.add(categoryId);
+    }
+    setCollapsedCategories(newCollapsed);
+  };
+
+  const toggleTagSelection = (tagId: string) => {
+    const newSelected = new Set(selectedTags);
+    if (newSelected.has(tagId)) {
+      newSelected.delete(tagId);
+    } else {
+      newSelected.add(tagId);
+    }
+    setSelectedTags(newSelected);
+  };
+
+  const selectAllTagsInCategory = (categoryId: string) => {
+    const categoryTags = tags.filter(tag => tag.categoryId === categoryId);
+    const newSelected = new Set(selectedTags);
+    categoryTags.forEach(tag => newSelected.add(tag.id));
+    setSelectedTags(newSelected);
+  };
+
+  const handleDeleteTag = async (tagId: string) => {
+    try {
+      await onDeleteTag(tagId);
+      setShowDeleteConfirm(null);
+    } catch (error) {
+      console.error('Failed to delete tag:', error);
+      alert('Failed to delete tag. Please try again.');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    try {
+      await onBulkDeleteTags(Array.from(selectedTags));
+      setSelectedTags(new Set());
+      setShowBulkDeleteConfirm(false);
+    } catch (error) {
+      console.error('Failed to bulk delete tags:', error);
+      alert('Failed to delete tags. Please try again.');
+    }
+  };
 
   const getTagCounts = (): TagCloud[] => {
     const counts = tags.map(tag => {
@@ -41,12 +97,21 @@ export const TagPanel: React.FC<TagPanelProps> = ({
       {categories.map(category => {
         const categoryTags = tagClouds.filter(({ tag }) => tag.categoryId === category.id);
         const totalCount = categoryTags.reduce((sum, { count }) => sum + count, 0);
+        const isCollapsed = collapsedCategories.has(category.id);
         
         return (
           <div key={category.id} className="space-y-2">
             {/* Category Header */}
-            <div className="flex items-center justify-between p-2 bg-gray-50 rounded-lg">
+            <button 
+              onClick={() => toggleCategory(category.id)}
+              className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors w-full"
+            >
               <div className="flex items-center">
+                {isCollapsed ? (
+                  <ChevronRight className="w-4 h-4 mr-1 text-gray-500" />
+                ) : (
+                  <ChevronDown className="w-4 h-4 mr-1 text-gray-500" />
+                )}
                 <div
                   className="w-3 h-3 rounded-full mr-2"
                   style={{ backgroundColor: category.color }}
@@ -56,29 +121,60 @@ export const TagPanel: React.FC<TagPanelProps> = ({
               <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
                 {totalCount}
               </span>
-            </div>
+            </button>
             
             {/* Category Tags */}
-            <div className="ml-4 space-y-1">
-              {categoryTags.map(({ tag, count }) => (
-                <button
-                  key={tag.id}
-                  onClick={() => onTagSelect(tag.id)}
-                  className={`w-full text-left p-2 rounded border transition-all ${
-                    selectedTag === tag.id
-                      ? "border-blue-500 bg-blue-50"
-                      : "border-gray-200 hover:border-gray-300 bg-white"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-gray-900">{tag.name}</span>
-                    <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
-                      {count}
-                    </span>
+            {!isCollapsed && (
+              <div className="ml-4 space-y-1">
+                {categoryTags.length > 0 && (
+                  <button
+                    onClick={() => selectAllTagsInCategory(category.id)}
+                    className="text-xs text-blue-600 hover:text-blue-800 mb-2"
+                  >
+                    Select all in category
+                  </button>
+                )}
+                {categoryTags.map(({ tag, count }) => (
+                  <div
+                    key={tag.id}
+                    className={`p-2 rounded border transition-all ${
+                      selectedTag === tag.id
+                        ? "border-blue-500 bg-blue-50"
+                        : "border-gray-200 hover:border-gray-300 bg-white"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2 flex-1">
+                        <input
+                          type="checkbox"
+                          checked={selectedTags.has(tag.id)}
+                          onChange={() => toggleTagSelection(tag.id)}
+                          className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <button
+                          onClick={() => onTagSelect(tag.id)}
+                          className="flex-1 text-left"
+                        >
+                          <span className="text-gray-900">{tag.name}</span>
+                        </button>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded-full text-xs">
+                          {count}
+                        </span>
+                        <button
+                          onClick={() => setShowDeleteConfirm(tag.id)}
+                          className="text-red-500 hover:text-red-700 p-1"
+                          title="Delete tag"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </button>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         );
       })}
@@ -147,6 +243,24 @@ export const TagPanel: React.FC<TagPanelProps> = ({
         {viewMode === "list" ? renderTagList() : renderTagCloud()}
       </div>
 
+      {/* Bulk Actions */}
+      {selectedTags.size > 0 && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-gray-600">
+              {selectedTags.size} tag{selectedTags.size > 1 ? 's' : ''} selected
+            </span>
+            <button
+              onClick={() => setShowBulkDeleteConfirm(true)}
+              className="bg-red-600 text-white px-3 py-1 rounded-lg hover:bg-red-700 transition-colors flex items-center"
+            >
+              <Trash2 className="w-4 h-4 mr-1" />
+              Delete Selected
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Summary */}
       <div className="mt-4 pt-4 border-t border-gray-200">
         <div className="text-sm text-gray-600">
@@ -160,6 +274,58 @@ export const TagPanel: React.FC<TagPanelProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete this tag and all its associated content? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowDeleteConfirm(null)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteTag(showDeleteConfirm)}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk Delete Confirmation Modal */}
+      {showBulkDeleteConfirm && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+            <h3 className="text-lg font-semibold mb-4">Confirm Bulk Delete</h3>
+            <p className="text-gray-600 mb-6">
+              Are you sure you want to delete {selectedTags.size} tag{selectedTags.size > 1 ? 's' : ''} and all their associated content? This action cannot be undone.
+            </p>
+            <div className="flex space-x-3">
+              <button
+                onClick={() => setShowBulkDeleteConfirm(false)}
+                className="flex-1 px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleBulkDelete}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                Delete All
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

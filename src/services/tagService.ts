@@ -36,8 +36,8 @@ export class TagService {
     return response.data || null;
   }
 
-  async createCategory(category: { name: string; description?: string; color?: string }): Promise<Tag | null> {
-    const response = await apiClient.post<Tag>('/tags/categories', category);
+  async createCategory(category: { name: string; description?: string; color?: string }): Promise<TagCategory | null> {
+    const response = await apiClient.post<TagCategory>('/tags/categories', category);
     
     if (response.error) {
       console.error('Failed to create category:', response.error);
@@ -59,15 +59,40 @@ export class TagService {
     return response.data || [];
   }
 
-  async deleteTag(tagId: string): Promise<boolean> {
+  async deleteTag(tagId: string): Promise<void> {
     const response = await apiClient.delete(`/tags/${tagId}`);
     
     if (response.error) {
       console.error('Failed to delete tag:', response.error);
-      return false;
+      throw new Error(response.error);
+    }
+  }
+
+  async bulkDeleteTags(tagIds: string[]): Promise<number> {
+    const response = await apiClient.delete<{ deletedCount: number }>('/tags', { tagIds });
+    
+    if (response.error) {
+      console.error('Failed to bulk delete tags:', response.error);
+      throw new Error(response.error);
     }
 
-    return true;
+    return response.data?.deletedCount || 0;
+  }
+
+  async updateCategoryKeywords(categoryId: string, keywords: string[]): Promise<TagCategory | null> {
+    try {
+      const response = await apiClient.put<TagCategory>(`/tags/categories/${categoryId}/keywords`, { keywords });
+      
+      if (response.error) {
+        console.error('Failed to update category keywords:', response.error);
+        return null;
+      }
+
+      return response.data || null;
+    } catch (error) {
+      console.error('Failed to update category keywords:', error);
+      return null;
+    }
   }
 }
 

@@ -10,8 +10,8 @@ const searchSchema = z.object({
   query: z.string().min(1),
   bookIds: z.array(z.string()).optional(),
   tagIds: z.array(z.string()).optional(),
-  limit: z.number().min(1).max(100).optional(),
-  offset: z.number().min(0).optional()
+  limit: z.number().min(1).max(100).optional().transform(val => val ? Math.floor(val) : undefined),
+  offset: z.number().min(0).optional().transform(val => val ? Math.floor(val) : undefined)
 });
 
 const chatSchema = z.object({

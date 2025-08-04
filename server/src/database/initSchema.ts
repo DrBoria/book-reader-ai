@@ -36,21 +36,24 @@ export async function initializeSchema() {
         name: 'Время',
         description: 'Временные периоды, даты, эпохи',
         color: '#3B82F6',
-        type: 'default'
+        type: 'default',
+        keywords: ['when', 'time', 'date', 'year', 'period', 'era', 'century', 'decade', 'temporal', 'когда', 'время', 'дата', 'год', 'период', 'эпоха', 'век', 'столетие']
       },
       {
         id: 'people', 
         name: 'Люди',
         description: 'Персоны, авторы, исторические личности',
         color: '#EF4444',
-        type: 'default'
+        type: 'default',
+        keywords: ['who', 'people', 'person', 'name', 'author', 'individual', 'human', 'character', 'кто', 'люди', 'человек', 'имя', 'автор', 'личность', 'персона', 'персонаж']
       },
       {
         id: 'location',
         name: 'Локации',
         description: 'Места, города, страны, регионы',
         color: '#F59E0B',
-        type: 'default'
+        type: 'default',
+        keywords: ['where', 'place', 'location', 'city', 'country', 'region', 'area', 'geography', 'где', 'место', 'локация', 'город', 'страна', 'регион', 'география', 'территория']
       }
     ];
 
@@ -62,8 +65,10 @@ export async function initializeSchema() {
           c.description = $description, 
           c.color = $color,
           c.type = $type,
+          c.keywords = $keywords,
           c.createdAt = datetime()
         ON MATCH SET
+          c.keywords = $keywords,
           c.updatedAt = datetime()
       `, category);
     }

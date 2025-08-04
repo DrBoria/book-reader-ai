@@ -4,7 +4,7 @@ import { Send, MessageCircle, Bot, User } from "lucide-react";
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
-  onSendMessage: (message: string) => void;
+  onSendMessage: (message: string) => Promise<void>;
   isBookLoaded: boolean;
 }
 

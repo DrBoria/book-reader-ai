@@ -4,6 +4,7 @@ export interface TagCategory {
   description?: string;
   color?: string;
   type?: "default" | "custom";
+  keywords?: string[];
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -85,7 +86,8 @@ export interface ContentReference {
 }
 
 export interface SearchQuery {
-  query: string;
+  query?: string;
+  searchTerms?: string[];
   bookIds?: string[];
   tagIds?: string[];
   limit?: number;

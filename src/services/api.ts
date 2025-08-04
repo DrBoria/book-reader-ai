@@ -58,9 +58,10 @@ class ApiClient {
     });
   }
 
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
+  async delete<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'DELETE',
+      body: body ? JSON.stringify(body) : undefined,
     });
   }
 
@@ -70,10 +71,6 @@ class ApiClient {
       body: formData,
       headers: {}, // Don't set Content-Type for FormData
     });
-  }
-
-  async delete<T>(endpoint: string): Promise<ApiResponse<T>> {
-    return this.request<T>(endpoint, { method: 'DELETE' });
   }
 }
 
