@@ -1,6 +1,7 @@
 import { database } from '../database/neo4j';
 import { Tag, TagCategory } from '../types';
 import { v4 as uuid } from 'uuid';
+import { normalizeTagName, findMergeableTag, shouldMergeTags } from '../utils/tagNormalization';
 
 export class TagRepository {
   async getAllCategories(): Promise<TagCategory[]> {
@@ -51,14 +52,63 @@ export class TagRepository {
     }
   }
 
-  async createDynamicTag(tag: Tag): Promise<void> {
+  async createDynamicTag(tag: Tag): Promise<string> {
     const session = await database.getSession();
     try {
-      // Use MERGE with unique key to prevent duplicates
-      await session.run(`
+      // Get category info for normalization
+      const categoryResult = await session.run(`
+        MATCH (c:TagCategory {id: $categoryId})
+        RETURN c.name as categoryName
+      `, { categoryId: tag.categoryId });
+      
+      if (categoryResult.records.length === 0) {
+        throw new Error(`Category with id ${tag.categoryId} not found`);
+      }
+      
+      const categoryName = categoryResult.records[0].get('categoryName');
+      
+      if (!categoryName) {
+        throw new Error(`Category name not found for id ${tag.categoryId}`);
+      }
+      
+      // Normalize the tag name
+      const normalizedName = normalizeTagName(tag.name);
+      
+      // Check for existing similar tags in the same category and book
+      const existingTagsResult = await session.run(`
+        MATCH (t:Tag {categoryId: $categoryId, bookId: $bookId})
+        RETURN t.id as id, t.name as name
+      `, { 
+        categoryId: tag.categoryId, 
+        bookId: tag.bookId 
+      });
+      
+      const existingTags: Tag[] = existingTagsResult.records.map(record => ({
+        id: record.get('id'),
+        name: record.get('name'),
+        categoryId: tag.categoryId,
+        bookId: tag.bookId
+      } as Tag));
+      
+      // Find if there's an existing tag we should merge with
+      const mergeableTag = findMergeableTag(
+        normalizedName,
+        tag.categoryId || '',
+        tag.bookId || null,
+        existingTags
+      );
+      
+      if (mergeableTag) {
+        // Return existing tag ID for content to be linked to
+        console.log(`Merging tag "${tag.name}" into existing tag "${mergeableTag.name}"`);
+        return mergeableTag.id;
+      }
+      
+      // Create new tag with normalized name
+      const result = await session.run(`
         MATCH (c:TagCategory {id: $categoryId})
         MERGE (t:Tag {
-          name: $name,
+          name: $normalizedName,
           value: $value,
           bookId: $bookId,
           categoryId: $categoryId
@@ -68,14 +118,17 @@ export class TagRepository {
           t.confidence = $confidence,
           t.createdAt = datetime()
         MERGE (t)-[:BELONGS_TO]->(c)
+        RETURN t.id as tagId
       `, {
         id: tag.id,
-        name: tag.name,
+        normalizedName,
         value: tag.value,
         bookId: tag.bookId,
         categoryId: tag.categoryId,
         confidence: tag.confidence
       });
+      
+      return result.records[0].get('tagId');
     } finally {
       await session.close();
     }
@@ -109,27 +162,7 @@ export class TagRepository {
     }
   }
 
-  async createCategory(categoryData: Omit<TagCategory, 'id' | 'createdAt' | 'updatedAt'>): Promise<string> {
-    const session = await database.getSession();
-    try {
-      const result = await session.run(`
-        CREATE (c:TagCategory {
-          id: randomUUID(),
-          name: $name,
-          description: $description,
-          color: $color,
-          type: $type,
-          createdAt: datetime(),
-          updatedAt: datetime()
-        })
-        RETURN c.id as id
-      `, categoryData);
-      
-      return result.records[0].get('id');
-    } finally {
-      await session.close();
-    }
-  }
+
 
   async getTagsByBookId(bookId: string): Promise<Tag[]> {
     const session = await database.getSession();
@@ -175,7 +208,7 @@ export class TagRepository {
   async createTag(tag: Omit<Tag, 'id' | 'createdAt' | 'updatedAt'>): Promise<Tag> {
     const session = await database.getSession();
     try {
-      const id = uuid.v4();
+      const id = uuid();
       const result = await session.run(`
         MATCH (c:TagCategory {id: $categoryId})
         CREATE (t:Tag {
@@ -253,6 +286,119 @@ export class TagRepository {
       }
       
       return result.records[0].get('tc').properties;
+    } finally {
+      await session.close();
+    }
+  }
+
+  async cleanupDuplicateTags(): Promise<{ mergedGroups: number, totalMerged: number }> {
+    const session = await database.getSession();
+    try {
+      // Get all tags with their categories
+      const tagsResult = await session.run(`
+        MATCH (t:Tag)-[:BELONGS_TO]->(c:TagCategory)
+        RETURN t, c.name as categoryName
+        ORDER BY t.createdAt ASC
+      `);
+      
+      const tags: (Tag & { categoryName: string })[] = tagsResult.records.map(record => {
+        const tag = record.get('t').properties;
+        return {
+          ...tag,
+          categoryName: record.get('categoryName'),
+          createdAt: tag.createdAt ? new Date(tag.createdAt) : undefined
+        };
+      });
+      
+      // Group tags by category and book
+      const tagGroups = new Map<string, (Tag & { categoryName: string })[]>();
+      
+      for (const tag of tags) {
+        const groupKey = `${tag.categoryId}:${tag.bookId || 'global'}`;
+        if (!tagGroups.has(groupKey)) {
+          tagGroups.set(groupKey, []);
+        }
+        tagGroups.get(groupKey)!.push(tag);
+      }
+      
+      let mergedGroups = 0;
+      let totalMerged = 0;
+      
+      // Process each group for duplicates
+      for (const [groupKey, groupTags] of tagGroups) {
+        const mergeActions: { keepTagId: string, mergeTagIds: string[] }[] = [];
+        const processed = new Set<string>();
+        
+        for (let i = 0; i < groupTags.length; i++) {
+          const tag1 = groupTags[i];
+          if (processed.has(tag1.id)) continue;
+          
+          const mergeGroup = [tag1.id];
+          const normalizedName1 = normalizeTagName(tag1.name);
+          
+          // Find similar tags in the same group
+          for (let j = i + 1; j < groupTags.length; j++) {
+            const tag2 = groupTags[j];
+            if (processed.has(tag2.id)) continue;
+            
+            const normalizedName2 = normalizeTagName(tag2.name);
+            
+            // Check if tags should be merged
+            if (shouldMergeTags(normalizedName1, normalizedName2)) {
+              mergeGroup.push(tag2.id);
+              processed.add(tag2.id);
+            }
+          }
+          
+          if (mergeGroup.length > 1) {
+            // Keep the oldest tag (first in creation order)
+            mergeActions.push({
+              keepTagId: mergeGroup[0],
+              mergeTagIds: mergeGroup.slice(1)
+            });
+            mergedGroups++;
+            totalMerged += mergeGroup.length - 1;
+          }
+          
+          processed.add(tag1.id);
+        }
+        
+        // Execute merge actions for this group
+        for (const action of mergeActions) {
+          await this.executeMergeTags(action.keepTagId, action.mergeTagIds);
+        }
+      }
+      
+      return { mergedGroups, totalMerged };
+    } finally {
+      await session.close();
+    }
+  }
+
+
+
+  private async executeMergeTags(keepTagId: string, mergeTagIds: string[]): Promise<void> {
+    const session = await database.getSession();
+    try {
+      for (const mergeTagId of mergeTagIds) {
+        console.log(`Merging tag ${mergeTagId} into ${keepTagId}`);
+        
+        // Move all content from merge tag to keep tag
+        await session.run(`
+          MATCH (c:Content)-[:TAGGED_AS]->(mergeTag:Tag {id: $mergeTagId})
+          MATCH (keepTag:Tag {id: $keepTagId})
+          CREATE (c)-[:TAGGED_AS]->(keepTag)
+          WITH c, mergeTag
+          MATCH (c)-[r:TAGGED_AS]->(mergeTag)
+          DELETE r
+        `, { mergeTagId, keepTagId });
+        
+        // Delete the merged tag
+        await session.run(`
+          MATCH (t:Tag {id: $mergeTagId})
+          DETACH DELETE t
+        `, { mergeTagId });
+      }
     } finally {
       await session.close();
     }

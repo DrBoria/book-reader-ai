@@ -94,6 +94,22 @@ export class TagService {
       return null;
     }
   }
+
+  async cleanupDuplicateTags(): Promise<{ success: boolean, mergedGroups: number, totalMerged: number, message: string } | null> {
+    try {
+      const response = await apiClient.post<{ success: boolean, mergedGroups: number, totalMerged: number, message: string }>('/tags/cleanup-duplicates');
+      
+      if (response.error) {
+        console.error('Failed to cleanup duplicate tags:', response.error);
+        return null;
+      }
+
+      return response.data || null;
+    } catch (error) {
+      console.error('Failed to cleanup duplicate tags:', error);
+      return null;
+    }
+  }
 }
 
 export const tagService = new TagService();

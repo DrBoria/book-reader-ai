@@ -53,15 +53,24 @@ export async function processBookJob(job: Job<BookProcessingJobData>) {
       
       console.log(`Page ${page.pageNumber}: Found ${result.tags.length} entities, ${result.taggedContent.length} content items`);
       
-      // Save new tags to database
+      // Save new tags to database and create mapping for merged tags
+      const tagIdMapping: Record<string, string> = {};
       for (const tag of result.tags) {
-        await tagRepo.createDynamicTag(tag);
+        const finalTagId = await tagRepo.createDynamicTag(tag);
+        tagIdMapping[tag.id] = finalTagId;
       }
       
-      // Save tagged content to graph database  
+      // Save tagged content to graph database with correct tag IDs
       for (const content of result.taggedContent) {
+        const finalTagId = tagIdMapping[content.tagId];
+        if (!finalTagId) {
+          console.warn(`No tag ID mapping found for content tag ${content.tagId}`);
+          continue;
+        }
+        
         await bookRepo.saveTaggedContent({
           ...content,
+          tagId: finalTagId,
           bookId,
           pageId
         });
@@ -87,7 +96,8 @@ export async function processBookJob(job: Job<BookProcessingJobData>) {
   } catch (error) {
     console.error('Book processing failed:', error);
     await bookRepo.updateStatus(bookId, 'error');
-    wsService.emitBookProcessingError(bookId, error.message);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+    wsService.emitBookProcessingError(bookId, errorMessage);
     throw error;
   }
 }

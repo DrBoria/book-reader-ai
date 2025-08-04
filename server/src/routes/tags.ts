@@ -173,4 +173,23 @@ router.put('/categories/:categoryId/keywords', async (req, res) => {
   }
 });
 
+// Cleanup duplicate tags
+router.post('/cleanup-duplicates', async (req, res) => {
+  try {
+    console.log('Starting cleanup of duplicate tags...');
+    const result = await tagRepo.cleanupDuplicateTags();
+    
+    console.log(`Cleanup completed: ${result.mergedGroups} groups merged, ${result.totalMerged} tags removed`);
+    res.json({
+      success: true,
+      mergedGroups: result.mergedGroups,
+      totalMerged: result.totalMerged,
+      message: `Successfully merged ${result.mergedGroups} duplicate tag groups, removing ${result.totalMerged} duplicate tags`
+    });
+  } catch (error) {
+    console.error('Error cleaning up duplicate tags:', error);
+    res.status(500).json({ error: 'Failed to cleanup duplicate tags' });
+  }
+});
+
 export default router;

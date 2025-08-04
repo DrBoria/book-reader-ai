@@ -67,10 +67,14 @@ const App: React.FC = () => {
 
   const refreshCategories = async () => {
     try {
-      const fetchedCategories = await tagService.getAllCategories();
+      const [fetchedTags, fetchedCategories] = await Promise.all([
+        tagService.getAllTags(),
+        tagService.getAllCategories()
+      ]);
+      setTags(fetchedTags);
       setCategories(fetchedCategories);
     } catch (error) {
-      console.error('Failed to refresh categories:', error);
+      console.error('Failed to refresh categories and tags:', error);
     }
   };
 

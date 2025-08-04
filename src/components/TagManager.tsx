@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tag, TagCategory } from "../types";
-import { X, Plus, Palette, FolderPlus, Edit2, Check, Hash } from "lucide-react";
+import { X, Plus, Palette, FolderPlus, Edit2, Check, Hash, Merge, Loader2 } from "lucide-react";
 import { tagService } from "../services/tagService";
 
 interface CategoryManagerProps {
@@ -25,6 +25,10 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   // Keywords editing state
   const [editingKeywords, setEditingKeywords] = useState<string | null>(null);
   const [keywordInput, setKeywordInput] = useState("");
+  
+  // Cleanup state
+  const [isCleaningUp, setIsCleaningUp] = useState(false);
+  const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const predefinedColors = [
@@ -115,6 +119,31 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
     setKeywordInput("");
   };
 
+  const handleCleanupDuplicates = async () => {
+    setIsCleaningUp(true);
+    setCleanupResult(null);
+    
+    try {
+      const result = await tagService.cleanupDuplicateTags();
+      
+      if (result) {
+        setCleanupResult(result.message);
+        
+        // Refresh categories and tags after cleanup
+        if (onCategoriesUpdate) {
+          onCategoriesUpdate();
+        }
+      } else {
+        setCleanupResult("Failed to cleanup duplicate tags");
+      }
+    } catch (error) {
+      console.error("Error cleaning up duplicates:", error);
+      setCleanupResult("Error occurred during cleanup");
+    } finally {
+      setIsCleaningUp(false);
+    }
+  };
+
   // Show existing categories and their tag counts
 
   return (
@@ -123,15 +152,37 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Category Manager</h2>
-          <button
-            onClick={onClose}
-            className="text-gray-400 hover:text-gray-600 transition-colors"
-          >
-            <X className="h-6 w-6" />
-          </button>
+          <div className="flex items-center space-x-3">
+            <button
+              onClick={handleCleanupDuplicates}
+              disabled={isCleaningUp}
+              className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors disabled:opacity-50"
+              title="Merge duplicate tags"
+            >
+              {isCleaningUp ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Merge className="h-4 w-4" />
+              )}
+              <span>{isCleaningUp ? 'Cleaning...' : 'Cleanup Duplicates'}</span>
+            </button>
+            <button
+              onClick={onClose}
+              className="text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <X className="h-6 w-6" />
+            </button>
+          </div>
         </div>
 
         <div className="p-6">
+          {/* Cleanup Result */}
+          {cleanupResult && (
+            <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700">{cleanupResult}</p>
+            </div>
+          )}
+          
           {/* Add New Category Form */}
           <div className="mb-8">
             <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
