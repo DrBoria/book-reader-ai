@@ -68,6 +68,7 @@ export interface ChatMessage {
     pageNumber: number;
     chapter?: string;
     quote: string;
+    bookId?: string;
   }[];
 }
 

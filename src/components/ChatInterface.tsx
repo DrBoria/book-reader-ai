@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ChatMessage } from "../types";
-import { Send, MessageCircle, Bot, User } from "lucide-react";
+import { Send, MessageCircle, Bot, User, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
+import { bookService } from "../services/bookService";
 
 interface ChatInterfaceProps {
   messages: ChatMessage[];
@@ -15,6 +16,9 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
 }) => {
   const [inputMessage, setInputMessage] = useState("");
   const [isTyping, setIsTyping] = useState(false);
+  const [expandedReferences, setExpandedReferences] = useState<Set<string>>(new Set());
+  const [pageContent, setPageContent] = useState<Record<string, string>>({});
+  const [loadingPages, setLoadingPages] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -43,12 +47,47 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
     }
   };
 
+  const toggleReference = (referenceId: string, bookId?: string, pageNumber?: number) => {
+    const newExpanded = new Set(expandedReferences);
+    if (newExpanded.has(referenceId)) {
+      newExpanded.delete(referenceId);
+    } else {
+      newExpanded.add(referenceId);
+
+      // Fetch page content if not already loaded
+      if (bookId && pageNumber && !pageContent[referenceId]) {
+        const newLoading = new Set(loadingPages);
+        newLoading.add(referenceId);
+        setLoadingPages(newLoading);
+
+        bookService.getPageContent(bookId, pageNumber)
+          .then(content => {
+            setPageContent(prev => ({
+              ...prev,
+              [referenceId]: content || 'Page content not available'
+            }));
+          })
+          .catch(() => {
+            setPageContent(prev => ({
+              ...prev,
+              [referenceId]: 'Failed to load page content'
+            }));
+          })
+          .finally(() => {
+            const newLoading = new Set(loadingPages);
+            newLoading.delete(referenceId);
+            setLoadingPages(newLoading);
+          });
+      }
+    }
+    setExpandedReferences(newExpanded);
+  };
+
   const renderMessage = (message: ChatMessage) => (
     <div
       key={message.id}
-      className={`flex items-start space-x-3 ${
-        message.type === "user" ? "justify-end" : "justify-start"
-      }`}
+      className={`flex items-start space-x-3 ${message.type === "user" ? "justify-end" : "justify-start"
+        }`}
     >
       {message.type === "assistant" && (
         <div className="flex-shrink-0">
@@ -59,24 +98,77 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
       )}
 
       <div
-        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-          message.type === "user"
+        className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${message.type === "user"
             ? "bg-blue-600 text-white"
             : "bg-gray-100 text-gray-900"
-        }`}
+          }`}
       >
         <p className="text-sm">{message.content}</p>
-        
+
         {message.references && message.references.length > 0 && (
           <div className="mt-2 pt-2 border-t border-gray-200">
-            <p className="text-xs text-gray-600 mb-1">References:</p>
-            {message.references.map((ref, index) => (
-              <div key={index} className="text-xs bg-gray-50 rounded p-2 mb-1">
-                <div className="font-medium">Page {ref.pageNumber}</div>
-                {ref.chapter && <div>Chapter: {ref.chapter}</div>}
-                <div className="italic mt-1">"{ref.quote}"</div>
-              </div>
-            ))}
+            <p className="text-xs text-gray-600 mb-2">References:</p>
+            {message.references.map((ref, index) => {
+              const referenceId = `${message.id}-${index}`;
+              const isExpanded = expandedReferences.has(referenceId);
+
+              return (
+                <div key={index} className="text-xs mb-2">
+                  <div
+                    className="bg-gray-50 rounded p-2 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => toggleReference(referenceId, ref.bookId, ref.pageNumber)}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <ExternalLink className="h-3 w-3 mr-1 text-blue-600" />
+                        <span className="font-medium">Page {ref.pageNumber}</span>
+                        {ref.chapter && (
+                          <>
+                            <span className="mx-1 text-gray-400">•</span>
+                            <span>Chapter: {ref.chapter}</span>
+                          </>
+                        )}
+                      </div>
+                      {isExpanded ? (
+                        <ChevronUp className="h-3 w-3 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="h-3 w-3 text-gray-500" />
+                      )}
+                    </div>
+
+                    <div className="italic mt-1 text-gray-700">
+                      "{ref.quote}"
+                    </div>
+                  </div>
+                  {isExpanded && (
+                    <div className="mt-1 p-3 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto">
+                      <div className="mb-2">
+                        <strong>Page {ref.pageNumber}</strong>
+                        {ref.chapter && <span> - {ref.chapter}</span>}
+                      </div>
+                      <div className="mb-2">
+                        <strong>Short quote:</strong>
+                        <div className="italic mt-1">"{ref.quote}"</div>
+                      </div>
+                      <div>
+                        <strong>Full context:</strong>
+                        <div className="mt-1 whitespace-pre-wrap leading-relaxed">
+                          {loadingPages.has(referenceId) ? (
+                            <div className="flex items-center">
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce ml-1" style={{ animationDelay: "0.1s" }}></div>
+                              <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce ml-1" style={{ animationDelay: "0.2s" }}></div>
+                            </div>
+                          ) : (
+                            pageContent[referenceId] || 'Page content not available'
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         )}
 
@@ -122,7 +214,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
           <div className="text-center text-gray-500 py-8">
             <Bot className="h-12 w-12 mx-auto mb-3 opacity-50" />
             <p className="mb-4">Start a conversation about your book!</p>
-            
+
             <div className="text-left space-y-2">
               <p className="text-sm font-medium text-gray-700 mb-2">Try asking:</p>
               {suggestedQuestions.map((question, index) => (

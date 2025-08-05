@@ -110,6 +110,15 @@ export class TagService {
       return null;
     }
   }
+
+  async deleteCategory(categoryId: string): Promise<void> {
+    const response = await apiClient.delete(`/tags/categories/${categoryId}`);
+    
+    if (response.error) {
+      console.error('Failed to delete category:', response.error);
+      throw new Error(response.error);
+    }
+  }
 }
 
 export const tagService = new TagService();

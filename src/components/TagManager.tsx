@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Tag, TagCategory } from "../types";
-import { X, Palette, FolderPlus, Edit2, Check, Hash, Merge, Loader2 } from "lucide-react";
+import { X, Palette, FolderPlus, Edit2, Check, Hash, Merge, Loader2, Trash2 } from "lucide-react";
 import { tagService } from "../services/tagService";
 
 interface CategoryManagerProps {
@@ -31,6 +31,9 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const [isCleaningUp, setIsCleaningUp] = useState(false);
   const [cleanupResult, setCleanupResult] = useState<string | null>(null);
   const [errors, setErrors] = useState<{ [key: string]: string }>({});
+  
+  // Delete state
+  const [isDeleting, setIsDeleting] = useState<string | null>(null);
 
   const predefinedColors = [
     "#3B82F6", // Blue
@@ -120,6 +123,30 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const handleCancelKeywords = () => {
     setEditingKeywords(null);
     setKeywordInput("");
+  };
+
+  const handleDeleteCategory = async (categoryId: string) => {
+    if (!window.confirm('Are you sure you want to delete this category? All associated tags will also be deleted.')) {
+      return;
+    }
+
+    setIsDeleting(categoryId);
+    
+    try {
+      await tagService.deleteCategory(categoryId);
+      
+      // Refresh categories after deletion
+      if (onCategoriesUpdate) {
+        onCategoriesUpdate();
+      }
+      
+      setCleanupResult('Category deleted successfully');
+    } catch (error) {
+      console.error('Error deleting category:', error);
+      setCleanupResult('Error deleting category');
+    } finally {
+      setIsDeleting(null);
+    }
   };
 
   const handleCleanupDuplicates = async () => {
@@ -388,18 +415,19 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                           style={{ backgroundColor: category.color }}
                         />
                         <div className="flex-1">
-                          <h4 className="font-medium text-gray-900">{category.name}</h4>
-                          <p className="text-sm text-gray-600">{category.description}</p>
-                          <p className="text-xs text-blue-600">
-                            Type: {category.dataType || 'text'} 
-                            {category.dataType === 'date' && ' (years, periods)'}
-                            {category.dataType === 'text' && ' (names, places)'}
-                            {category.dataType === 'number' && ' (quantities)'}
-                          </p>
-                          <p className="text-xs text-gray-500 mt-1">
-                            {tags.filter(tag => tag.categoryId === category.id).length} tags generated
-                          </p>
-                        </div>
+                        <h4 className="font-medium text-gray-900">{category.name}</h4>
+                        <p className="text-sm text-gray-600">{category.description}</p>
+                        <p className="text-xs text-blue-600">
+                          Type: {category.dataType || 'text'} 
+                          {category.dataType === 'date' && ' (years, periods)'}
+                          {category.dataType === 'text' && ' (names, places)'}
+                          {category.dataType === 'number' && ' (quantities)'}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {tags.filter(tag => tag.categoryId === category.id).length} tags generated
+                        </p>
+                      </div>
+                      <div className="flex items-center space-x-1">
                         <button
                           onClick={() => handleEditKeywords(category.id, category.keywords)}
                           className="p-2 text-gray-500 hover:text-blue-600 transition-colors"
@@ -407,6 +435,19 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                         >
                           <Edit2 className="h-4 w-4" />
                         </button>
+                        <button
+                          onClick={() => handleDeleteCategory(category.id)}
+                          disabled={isDeleting === category.id}
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors disabled:opacity-50"
+                          title="Delete category"
+                        >
+                          {isDeleting === category.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </button>
+                      </div>
                       </div>
                       
                       {/* Keywords section */}

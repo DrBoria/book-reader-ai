@@ -2,12 +2,14 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'path';
 import { config } from '../config';
+import { database } from '../database/neo4j';
 import { BookRepository } from '../repositories/bookRepository';
 import { TagRepository } from '../repositories/tagRepository';
 import { queueService } from '../services/queue';
 import { PDFParsingService } from '../services/pdfParsing';
+import { ProcessingJob } from '../types';
 
-const router = Router();
+const router: Router = Router();
 const bookRepo = new BookRepository();
 const tagRepo = new TagRepository();
 const pdfService = new PDFParsingService();
@@ -175,6 +177,38 @@ router.get('/:bookId/job-status', async (req, res) => {
   } catch (error) {
     console.error('Error fetching job status:', error);
     res.status(500).json({ error: 'Failed to fetch job status' });
+  }
+});
+
+// Get page content by book ID and page number
+router.get('/:bookId/pages/:pageNumber', async (req, res) => {
+  try {
+    const { bookId, pageNumber } = req.params;
+    const pageNum = parseInt(pageNumber);
+    
+    if (isNaN(pageNum) || pageNum < 1) {
+      return res.status(400).json({ error: 'Invalid page number' });
+    }
+
+    const session = await database.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (b:Book {id: $bookId})-[:HAS_PAGE]->(p:Page {pageNumber: $pageNumber})
+        RETURN p.text as content
+      `, { bookId, pageNumber: pageNum });
+
+      if (result.records.length === 0) {
+        return res.status(404).json({ error: 'Page not found' });
+      }
+
+      const content = result.records[0].get('content');
+      res.json({ content });
+    } finally {
+      await session.close();
+    }
+  } catch (error) {
+    console.error('Error fetching page content:', error);
+    res.status(500).json({ error: 'Failed to fetch page content' });
   }
 });
 

@@ -193,4 +193,38 @@ router.post('/cleanup-duplicates', async (req, res) => {
   }
 });
 
+// Delete category
+router.delete('/categories/:categoryId', async (req, res) => {
+  try {
+    const { categoryId } = req.params;
+    
+    // First check if category exists
+    const categories = await tagRepo.getAllCategories();
+    const category = categories.find(c => c.id === categoryId);
+    
+    if (!category) {
+      return res.status(404).json({ error: 'Category not found' });
+    }
+
+    // Check if category has any tags
+    const tags = await tagRepo.getAllTags();
+    const categoryTags = tags.filter(tag => tag.categoryId === categoryId);
+    
+    if (categoryTags.length > 0) {
+      return res.status(400).json({ 
+        error: 'Cannot delete category with existing tags',
+        tagCount: categoryTags.length
+      });
+    }
+
+    // Delete the category
+    await tagRepo.deleteCategory(categoryId);
+    
+    res.json({ message: 'Category deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting category:', error);
+    res.status(500).json({ error: 'Failed to delete category' });
+  }
+});
+
 export default router;

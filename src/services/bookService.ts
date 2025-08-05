@@ -79,6 +79,17 @@ export class BookService {
 
     return response.data || null;
   }
+
+  async getPageContent(bookId: string, pageNumber: number): Promise<string | null> {
+    const response = await apiClient.get<{ content: string }>(`/books/${bookId}/pages/${pageNumber}`);
+    
+    if (response.error) {
+      console.error('Failed to fetch page content:', response.error);
+      return null;
+    }
+
+    return response.data?.content || null;
+  }
 }
 
 export const bookService = new BookService();

@@ -91,10 +91,10 @@ export class EntityWorkflow {
         // Continue to next iteration - always retry with feedback
         currentIteration++;
         
-        // Only break if we get exact same feedback 3 times in a row
-        if (previousFeedback.length >= 3 && 
-            previousFeedback.slice(-3).every(f => f === previousFeedback[previousFeedback.length - 1])) {
-          console.log('Breaking feedback loop - same feedback received 3 times');
+        // Break immediately if we get exact same feedback twice
+        if (previousFeedback.length >= 2 && 
+            previousFeedback.slice(-2).every(f => f === previousFeedback[previousFeedback.length - 1])) {
+          console.log('Breaking feedback loop - same feedback received twice');
           break;
         }
         
@@ -209,21 +209,34 @@ export class EntityWorkflow {
     
     const lowerFeedback = feedback.toLowerCase();
     
-    // Common categorization issues and specific guidance
-    if (lowerFeedback.includes('events') && lowerFeedback.includes('technology')) {
-      return 'CRITICAL: Product releases and introductions belong in Technology & Concepts, not Events. Events are for historical occurrences like trials, conferences, or specific incidents.';
+    // Generic guidance based on category descriptions and keywords
+    if (lowerFeedback.includes('organizations') && lowerFeedback.includes('technology')) {
+      return 'CRITICAL: Use category descriptions and keywords as your guide. Check each category\'s description and keywords to determine the correct placement based on entity type.';
     }
     
-    if (lowerFeedback.includes('organizations') && lowerFeedback.includes('technology')) {
-      return 'CRITICAL: Company names go in Organizations, their products/services go in Technology & Concepts. "Microsoft" = Organizations, "Internet Explorer" = Technology & Concepts.';
+    if (lowerFeedback.includes('events') && lowerFeedback.includes('technology')) {
+      return 'CRITICAL: Use category descriptions and keywords to distinguish between Events (historical occurrences) and Technology & Concepts (actual products/technologies). Refer to category keywords for guidance.';
+    }
+    
+    if (lowerFeedback.includes('people') && lowerFeedback.includes('organizations')) {
+      return 'CRITICAL: Use category descriptions and keywords to distinguish between People (individuals) and Organizations (companies/institutions). Check category keywords for entity type guidance.';
+    }
+    
+    if (lowerFeedback.includes('time') && lowerFeedback.includes('text')) {
+      return 'CRITICAL: Use category descriptions and keywords to ensure proper data type matching. Time category should contain temporal entities, text categories should contain proper nouns.';
     }
     
     if (lowerFeedback.includes('generic')) {
-      return 'CRITICAL: Extract only specific named entities (proper nouns), not generic terms. Use exact names from the text.';
+      return 'CRITICAL: Extract only specific named entities that match the category descriptions and keywords. Use exact names from the text and verify against category keywords.';
     }
     
     if (lowerFeedback.includes('context')) {
-      return 'CRITICAL: Add brief context to entities when helpful, e.g., "Microsoft (software company)" or "U.S. Justice Department (regulatory agency)".';
+      return 'CRITICAL: Ensure extracted entities match the category descriptions and keywords as defined in the database schema. Use category keywords as definitive guidance.';
+    }
+    
+    // Generic categorization guidance
+    if (lowerFeedback.includes('should be in')) {
+      return 'SPECIFIC FIX REQUIRED: Use the category descriptions and keywords from the database schema as your definitive guide for proper categorization. Check each category\'s keywords and description.';
     }
     
     return null;

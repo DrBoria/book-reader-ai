@@ -68,17 +68,13 @@ export class AITaggingService {
   }
 
   private buildTaggingPrompt(text: string, categories: TagCategory[], previousFeedback?: string): string {
-    const categoryDescriptions = categories.map(cat => {
+    const categoryRules = categories.map(cat => {
       const keywords = cat.keywords && cat.keywords.length > 0 
-        ? `\n  Keywords: ${cat.keywords.join(', ')}`
+        ? `Keywords: ${cat.keywords.join(', ')}`
         : '';
-      const dataType = cat.dataType ? ` [type: ${cat.dataType}]` : '';
-      
-      // Use ONLY category descriptions and keywords from database schema - NO hardcoded patterns
-      
-      return `- "${cat.name}"${dataType}:\n  Description: ${cat.description || 'Extract relevant entities for this category'}${keywords}`;
-    }).join('\n\n');
-
+      return `- ${cat.name}: ${cat.description}${keywords ? ` (${keywords})` : ''}`;
+    }).join('\n');
+    
     const feedbackSection = previousFeedback ? `
 
 IMPORTANT - Previous reviewer feedback to address:
@@ -86,17 +82,9 @@ IMPORTANT - Previous reviewer feedback to address:
 
 Please correct the issues mentioned in the feedback above.` : '';
 
-    return `You are a precise entity extraction system. Extract meaningful entities from the given text and assign them to the most appropriate category.
+    return `You are an expert entity extractor for book content analysis. Extract proper nouns that belong to specific categories based on their meaning and context.
 
-Categories to extract:
-${categoryDescriptions}
-
-Data type guidelines:
-- [type: date] - Extract years, dates, time periods, decades (e.g., "1945", "1970s", "1961-1975")
-- [type: text] - Extract ACTUAL names of people, places, organizations, concepts (NOT common words, NOT numbers or years)
-- [type: number] - Extract numeric values, quantities, measurements
-
-CRITICAL Guidelines for text categories:
+Extraction rules:
 - Extract only actual proper nouns that represent specific named entities
 - Focus on entities that would be capitalized in the middle of sentences, not just at sentence beginnings
 - Analyze the context around each entity to determine if it's a substantive proper noun
@@ -104,11 +92,20 @@ CRITICAL Guidelines for text categories:
 - Ensure extracted entities are genuine examples of what the category description specifies
 - Use the category keywords as guidance for what types of entities to look for
 
+CATEGORY DEFINITIONS (use descriptions and keywords as your guide):
+${categoryRules}
+
+Data type guidelines:
+- [type: date] - Extract years, dates, time periods, decades
+- [type: text] - Extract ACTUAL names of people, places, organizations, concepts
+- [type: number] - Extract numeric values, quantities, measurements
+
 Additional rules:
 - Extract only entities that clearly and specifically belong to each category
-- ALLOW entities to belong to MULTIPLE categories if they fit (e.g., "Howard Aiken" can be both in "Люди" and "Ideas from the Past")
+- ALLOW entities to belong to MULTIPLE categories if they fit
 - STRICTLY respect data types - do NOT put years/dates in text categories
 - STRICTLY respect data types - do NOT put names/places in date categories
+- Company names go in Organizations, their products go in Technology & Concepts
 - Return ONLY a JSON array with NO explanations or additional text${feedbackSection}
 
 Required JSON format:
@@ -129,7 +126,7 @@ Text to analyze: "${text}"`;
       const keywords = cat.keywords && cat.keywords.length > 0 
         ? `\n    Keywords: ${cat.keywords.join(', ')}`
         : '';
-      const dataType = cat.dataType ? ` [${cat.dataType}]` : '';
+      const dataType = cat.dataType ? ` [data type: ${cat.dataType}]` : '';
       const description = cat.description || 'No description available';
       
       return `"${cat.name}"${dataType}:\n    Description: ${description}${keywords}`;
@@ -157,12 +154,16 @@ Review guidelines (use category descriptions and keywords as your guide):
 - Entities that completely contradict the category description
 - Entities not found in the original text
 - Common words that don't match category intent based on description/keywords
+- Company names placed in Technology & Concepts (they belong in Organizations based on description)
+- Products placed in Organizations (they belong in Technology & Concepts based on description)
 
 Evaluation approach:
 - Use the detailed category descriptions to judge if entities fit
-- Consider the provided keywords as context clues
+- Consider the provided keywords as context clues for what belongs in each category
 - Allow entities to fit multiple categories if appropriate
 - Focus on whether the entity meaningfully relates to the category's purpose as described
+- Company names must go in Organizations ("компании, корпорации, учреждения")
+- Products and technologies must go in Technology & Concepts ("продукты, системы, технологии")
 
 Respond with either:
 - "APPROVED" if entities are reasonable proper nouns in correct data types

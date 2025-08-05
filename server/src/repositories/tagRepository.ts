@@ -304,6 +304,18 @@ export class TagRepository {
     }
   }
 
+  async deleteCategory(categoryId: string): Promise<void> {
+    const session = await database.getSession();
+    try {
+      await session.run(`
+        MATCH (tc:TagCategory {id: $categoryId})
+        DETACH DELETE tc
+      `, { categoryId });
+    } finally {
+      await session.close();
+    }
+  }
+
   async cleanupDuplicateTags(): Promise<{ mergedGroups: number, totalMerged: number }> {
     const session = await database.getSession();
     try {
