@@ -43,6 +43,20 @@ export class BookRepository {
     }
   }
 
+  async bookExists(bookId: string): Promise<boolean> {
+    const session = await database.getSession();
+    try {
+      const result = await session.run(`
+        MATCH (b:Book {id: $bookId})
+        RETURN count(b) > 0 as exists
+      `, { bookId });
+      
+      return result.records[0]?.get('exists') || false;
+    } finally {
+      await session.close();
+    }
+  }
+
   async updateBookPages(bookId: string, totalPages: number): Promise<void> {
     const session = await database.getSession();
     try {
@@ -76,11 +90,9 @@ export class BookRepository {
     }
   }
 
-  async saveTaggedContent(content: Omit<TaggedContent, 'id'>): Promise<string> {
+  async saveTaggedContent(content: Omit<TaggedContent, 'id'>): Promise<string | null> {
     const session = await database.getSession();
     try {
-      console.log('Saving tagged content:', content);
-      
       // First, verify all required nodes exist
       const verifyResult = await session.run(`
         OPTIONAL MATCH (b:Book {id: $bookId})
@@ -105,14 +117,16 @@ export class BookRepository {
       });
 
       if (!bookExists) {
-        throw new Error(`Book with id ${content.bookId} not found`);
+        console.error(`Book with id ${content.bookId} not found, skipping content`);
+        return null; // Skip instead of throwing
       }
       if (!pageExists) {
-        throw new Error(`Page with id ${content.pageId} not found`);
+        console.error(`Page with id ${content.pageId} not found, skipping content`);
+        return null; // Skip instead of throwing
       }
       if (!tagExists) {
         console.warn(`Tag with id ${content.tagId} not found, skipping content`);
-        return;
+        return null;
       }
 
       const result = await session.run(`

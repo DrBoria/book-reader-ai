@@ -16,6 +16,13 @@ export async function processBookJob(job: Job<BookProcessingJobData>) {
   const wsService = WebSocketService.getInstance();
 
   try {
+    // Verify book exists before processing
+    const bookExists = await bookRepo.bookExists(bookId);
+    if (!bookExists) {
+      console.error(`Book with id ${bookId} does not exist, skipping processing`);
+      return;
+    }
+    
     // Update book status
     await bookRepo.updateStatus(bookId, 'processing');
     
@@ -68,12 +75,21 @@ export async function processBookJob(job: Job<BookProcessingJobData>) {
           continue;
         }
         
-        await bookRepo.saveTaggedContent({
-          ...content,
-          tagId: finalTagId,
-          bookId,
-          pageId
-        });
+        try {
+          const savedContentId = await bookRepo.saveTaggedContent({
+            ...content,
+            tagId: finalTagId,
+            bookId,
+            pageId
+          });
+          
+          if (!savedContentId) {
+            console.warn(`Skipped saving content for page ${page.pageNumber} - missing dependencies`);
+          }
+        } catch (error) {
+          console.error(`Failed to save tagged content for page ${page.pageNumber}:`, error instanceof Error ? error.message : String(error));
+          // Continue processing other content instead of failing the whole page
+        }
       }
       
       // Emit real-time update

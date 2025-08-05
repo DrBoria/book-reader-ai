@@ -116,7 +116,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleAddCustomCategory = async (categoryData: { name: string; description?: string; color?: string }) => {
+  const handleAddCustomCategory = async (categoryData: { name: string; description?: string; color?: string; dataType?: string }) => {
     try {
       const category = await tagService.createCategory(categoryData);
       if (category) {

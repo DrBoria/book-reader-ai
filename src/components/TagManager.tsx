@@ -1,12 +1,12 @@
 import React, { useState } from "react";
 import { Tag, TagCategory } from "../types";
-import { X, Plus, Palette, FolderPlus, Edit2, Check, Hash, Merge, Loader2 } from "lucide-react";
+import { X, Palette, FolderPlus, Edit2, Check, Hash, Merge, Loader2 } from "lucide-react";
 import { tagService } from "../services/tagService";
 
 interface CategoryManagerProps {
   tags: Tag[];
   categories: TagCategory[];
-  onAddCategory: (category: { name: string; description?: string; color?: string }) => Promise<TagCategory | null>;
+  onAddCategory: (category: { name: string; description?: string; color?: string; dataType?: string }) => Promise<TagCategory | null>;
   onClose: () => void;
   onCategoriesUpdate?: () => void;
 }
@@ -21,6 +21,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDescription, setNewCategoryDescription] = useState("");
   const [newCategoryColor, setNewCategoryColor] = useState("#6366f1");
+  const [newCategoryDataType, setNewCategoryDataType] = useState("text");
   
   // Keywords editing state
   const [editingKeywords, setEditingKeywords] = useState<string | null>(null);
@@ -70,7 +71,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
       const result = await onAddCategory({
         name: newCategoryName.trim(),
         description: newCategoryDescription.trim(),
-        color: newCategoryColor
+        color: newCategoryColor,
+        dataType: newCategoryDataType
       });
 
       if (result) {
@@ -78,6 +80,7 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
         setNewCategoryName("");
         setNewCategoryDescription("");
         setNewCategoryColor("#6366f1");
+        setNewCategoryDataType("text");
         setErrors({});
       }
       
@@ -157,14 +160,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
               onClick={handleCleanupDuplicates}
               disabled={isCleaningUp}
               className="flex items-center space-x-2 px-3 py-1.5 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors disabled:opacity-50"
-              title="Merge duplicate tags"
+              title="Merge similar tags using fuzzy search"
             >
               {isCleaningUp ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Merge className="h-4 w-4" />
               )}
-              <span>{isCleaningUp ? 'Cleaning...' : 'Cleanup Duplicates'}</span>
+              <span>{isCleaningUp ? 'Fuzzy Merging...' : 'Fuzzy Merge Tags'}</span>
             </button>
             <button
               onClick={onClose}
@@ -260,6 +263,21 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                 </div>
               </div>
 
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Data Type
+                </label>
+                <select
+                  value={newCategoryDataType}
+                  onChange={(e) => setNewCategoryDataType(e.target.value)}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="text">Text - Names, places, concepts</option>
+                  <option value="date">Date - Years, time periods, dates</option>
+                  <option value="number">Number - Quantities, measurements</option>
+                </select>
+              </div>
+
               <button
                 type="submit"
                 className="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700 transition-colors font-medium"
@@ -288,6 +306,12 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                       <div className="flex-1">
                         <h4 className="font-medium text-gray-900">{category.name}</h4>
                         <p className="text-sm text-gray-600">{category.description}</p>
+                        <p className="text-xs text-blue-600 mt-1">
+                          Type: {category.dataType || 'text'} 
+                          {category.dataType === 'date' && ' (years, periods)'}
+                          {category.dataType === 'text' && ' (names, places)'}
+                          {category.dataType === 'number' && ' (quantities)'}
+                        </p>
                       </div>
                       <button
                         onClick={() => handleEditKeywords(category.id, category.keywords)}
@@ -366,6 +390,12 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
                         <div className="flex-1">
                           <h4 className="font-medium text-gray-900">{category.name}</h4>
                           <p className="text-sm text-gray-600">{category.description}</p>
+                          <p className="text-xs text-blue-600">
+                            Type: {category.dataType || 'text'} 
+                            {category.dataType === 'date' && ' (years, periods)'}
+                            {category.dataType === 'text' && ' (names, places)'}
+                            {category.dataType === 'number' && ' (quantities)'}
+                          </p>
                           <p className="text-xs text-gray-500 mt-1">
                             {tags.filter(tag => tag.categoryId === category.id).length} tags generated
                           </p>

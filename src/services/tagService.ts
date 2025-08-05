@@ -36,7 +36,7 @@ export class TagService {
     return response.data || null;
   }
 
-  async createCategory(category: { name: string; description?: string; color?: string }): Promise<TagCategory | null> {
+  async createCategory(category: { name: string; description?: string; color?: string; dataType?: string }): Promise<TagCategory | null> {
     const response = await apiClient.post<TagCategory>('/tags/categories', category);
     
     if (response.error) {

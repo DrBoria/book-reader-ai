@@ -58,7 +58,7 @@ export class TagRepository {
       // Get category info for normalization
       const categoryResult = await session.run(`
         MATCH (c:TagCategory {id: $categoryId})
-        RETURN c.name as categoryName
+        RETURN c.name as categoryName, c.dataType as dataType
       `, { categoryId: tag.categoryId });
       
       if (categoryResult.records.length === 0) {
@@ -66,6 +66,7 @@ export class TagRepository {
       }
       
       const categoryName = categoryResult.records[0].get('categoryName');
+      const dataType = categoryResult.records[0].get('dataType') || 'text';
       
       if (!categoryName) {
         throw new Error(`Category name not found for id ${tag.categoryId}`);
@@ -95,7 +96,8 @@ export class TagRepository {
         normalizedName,
         tag.categoryId || '',
         tag.bookId || null,
-        existingTags
+        existingTags,
+        dataType
       );
       
       if (mergeableTag) {
@@ -251,6 +253,7 @@ export class TagRepository {
           description: $description,
           color: $color,
           type: 'custom',
+          dataType: $dataType,
           createdAt: datetime(),
           updatedAt: datetime()
         })
@@ -259,7 +262,8 @@ export class TagRepository {
         id,
         name: category.name,
         description: category.description || '',
-        color: category.color || '#6B7280'
+        color: category.color || '#6B7280',
+        dataType: category.dataType || 'text'
       });
       
       return result.records[0].get('tc').properties;
@@ -294,82 +298,53 @@ export class TagRepository {
   async cleanupDuplicateTags(): Promise<{ mergedGroups: number, totalMerged: number }> {
     const session = await database.getSession();
     try {
-      // Get all tags with their categories
+      // Get all tags
       const tagsResult = await session.run(`
-        MATCH (t:Tag)-[:BELONGS_TO]->(c:TagCategory)
-        RETURN t, c.name as categoryName
+        MATCH (t:Tag)
+        RETURN t
         ORDER BY t.createdAt ASC
       `);
       
-      const tags: (Tag & { categoryName: string })[] = tagsResult.records.map(record => {
+      const tags: Tag[] = tagsResult.records.map(record => {
         const tag = record.get('t').properties;
         return {
           ...tag,
-          categoryName: record.get('categoryName'),
           createdAt: tag.createdAt ? new Date(tag.createdAt) : undefined
         };
       });
       
-      // Group tags by category and book
-      const tagGroups = new Map<string, (Tag & { categoryName: string })[]>();
+      console.log(`Found ${tags.length} tags to analyze for duplicates`);
       
-      for (const tag of tags) {
-        const groupKey = `${tag.categoryId}:${tag.bookId || 'global'}`;
-        if (!tagGroups.has(groupKey)) {
-          tagGroups.set(groupKey, []);
-        }
-        tagGroups.get(groupKey)!.push(tag);
-      }
+      // Get categories for data type information
+      const categoriesResult = await session.run(`
+        MATCH (c:TagCategory)
+        RETURN c.id as id, c.dataType as dataType
+      `);
       
-      let mergedGroups = 0;
+      const categories = categoriesResult.records.map(record => ({
+        id: record.get('id'),
+        dataType: record.get('dataType') || 'text'
+      }));
+      
+      // Use fuzzy search to find similar tags
+      const { findSimilarTags } = await import('../utils/tagNormalization');
+      const mergeGroups = findSimilarTags(tags, categories, 0.75); // Aggressive threshold
+      
+      console.log(`Found ${mergeGroups.length} groups of similar tags to merge`);
+      
       let totalMerged = 0;
       
-      // Process each group for duplicates
-      for (const [groupKey, groupTags] of tagGroups) {
-        const mergeActions: { keepTagId: string, mergeTagIds: string[] }[] = [];
-        const processed = new Set<string>();
+      // Execute merge actions
+      for (const group of mergeGroups) {
+        const keepTagId = group.primary.id;
+        const mergeTagIds = group.duplicates.map(tag => tag.id);
         
-        for (let i = 0; i < groupTags.length; i++) {
-          const tag1 = groupTags[i];
-          if (processed.has(tag1.id)) continue;
-          
-          const mergeGroup = [tag1.id];
-          const normalizedName1 = normalizeTagName(tag1.name);
-          
-          // Find similar tags in the same group
-          for (let j = i + 1; j < groupTags.length; j++) {
-            const tag2 = groupTags[j];
-            if (processed.has(tag2.id)) continue;
-            
-            const normalizedName2 = normalizeTagName(tag2.name);
-            
-            // Check if tags should be merged
-            if (shouldMergeTags(normalizedName1, normalizedName2)) {
-              mergeGroup.push(tag2.id);
-              processed.add(tag2.id);
-            }
-          }
-          
-          if (mergeGroup.length > 1) {
-            // Keep the oldest tag (first in creation order)
-            mergeActions.push({
-              keepTagId: mergeGroup[0],
-              mergeTagIds: mergeGroup.slice(1)
-            });
-            mergedGroups++;
-            totalMerged += mergeGroup.length - 1;
-          }
-          
-          processed.add(tag1.id);
-        }
-        
-        // Execute merge actions for this group
-        for (const action of mergeActions) {
-          await this.executeMergeTags(action.keepTagId, action.mergeTagIds);
-        }
+        console.log(`Merging ${mergeTagIds.length} tags into "${group.primary.name}"`);
+        await this.executeMergeTags(keepTagId, mergeTagIds);
+        totalMerged += mergeTagIds.length;
       }
       
-      return { mergedGroups, totalMerged };
+      return { mergedGroups: mergeGroups.length, totalMerged };
     } finally {
       await session.close();
     }

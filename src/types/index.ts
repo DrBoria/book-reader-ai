@@ -4,6 +4,8 @@ export interface TagCategory {
   description?: string;
   color?: string;
   type?: "default" | "custom";
+  dataType?: "text" | "number" | "date";
+  keywords?: string[];
   tags?: Tag[];  // For grouped responses
   createdAt?: string;
   updatedAt?: string;

@@ -3,7 +3,7 @@ import { TagRepository } from '../repositories/tagRepository';
 import { SearchService } from '../services/searchService';
 import { z } from 'zod';
 
-const router = Router();
+const router: Router = Router();
 const tagRepo = new TagRepository();
 const searchService = new SearchService();
 
@@ -73,7 +73,7 @@ router.post('/', async (req, res) => {
 
     const tag = await tagRepo.createTag({
       ...validation.data,
-      type: 'custom'
+      type: 'dynamic'
     });
 
     res.status(201).json(tag);
@@ -136,7 +136,7 @@ router.delete('/', async (req, res) => {
 // Create category
 router.post('/categories', async (req, res) => {
   try {
-    const { name, description, color } = req.body;
+    const { name, description, color, dataType } = req.body;
     
     if (!name) {
       return res.status(400).json({ error: 'Category name is required' });
@@ -145,7 +145,8 @@ router.post('/categories', async (req, res) => {
     const category = await tagRepo.createCategory({
       name,
       description: description || '',
-      color: color || '#6B7280'
+      color: color || '#6B7280',
+      dataType: dataType || 'text'
     });
 
     res.status(201).json(category);

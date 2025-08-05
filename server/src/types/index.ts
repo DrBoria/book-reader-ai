@@ -4,6 +4,7 @@ export interface TagCategory {
   description?: string;
   color?: string;
   type?: "default" | "custom";
+  dataType?: "text" | "number" | "date";
   keywords?: string[];
   createdAt?: Date;
   updatedAt?: Date;
