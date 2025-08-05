@@ -1,11 +1,16 @@
 import { EntityWorkflow } from './entityWorkflow';
 import { Tag, TaggedContent, TagCategory } from '../types';
+import { isValidEntityForDataType, normalizeEntityByDataType } from '../utils/dataTypeNormalization';
 
 export class AITaggingService {
   private workflow: EntityWorkflow;
 
   constructor() {
     this.workflow = new EntityWorkflow();
+  }
+
+  private generateId(): string {
+    return Math.random().toString(36).substr(2, 9);
   }
 
   async tagPageContent(
@@ -26,20 +31,30 @@ export class AITaggingService {
     try {
       console.log(`🚀 Starting AI tagging for page ${pageNumber}`);
       
-      const result = await this.workflow.processEntities({
+      const workflowResult = await this.workflow.processEntities({
         text,
         pageNumber,
         bookId,
         categories
       });
 
-      if (result.tags.length === 0) {
+      if (workflowResult.tags.length === 0) {
         console.log(`❌ No entities found for page ${pageNumber}`);
         return { tags: [], taggedContent: [] };
       }
 
-      console.log(`✅ Found ${result.tags.length} entities for page ${pageNumber}`);
-      return result;
+      // Map WorkflowOutput to expected format
+      const mappedResult = {
+        tags: workflowResult.tags,
+        taggedContent: workflowResult.taggedContent.map(item => ({
+          ...item,
+          id: this.generateId(),
+          createdAt: new Date()
+        }))
+      };
+
+      console.log(`✅ Found ${mappedResult.tags.length} entities for page ${pageNumber}`);
+      return mappedResult;
 
     } catch (error) {
       console.error('AI tagging failed:', error);
@@ -102,123 +117,12 @@ Required JSON format:
 Text to analyze: "${text}"`;
   }
 
-  private async extractEntitiesWithReview(
-    text: string,
-    pageNumber: number, 
-    bookId: string,
-    categories: TagCategory[],
-    previousFeedback?: string
-  ): Promise<{
-    tags: Tag[];
-    taggedContent: Omit<TaggedContent, 'bookId' | 'pageId'>[];
-  }> {
-    const maxIterations = 3; // Allow more iterations for feedback
-    let currentIteration = 0;
-    let lastFeedback = previousFeedback;
 
-    while (currentIteration < maxIterations) {
-      console.log(`Writer attempt ${currentIteration + 1} for page ${pageNumber}`);
-
-      // WRITER: Extract entities (with previous feedback if available)
-      const writerPrompt = this.buildTaggingPrompt(text, categories, lastFeedback);
-      const writerResponse = await this.openai.chat.completions.create({
-        model: config.lmStudio.model,
-        messages: [{ role: 'user', content: writerPrompt }],
-        temperature: 0.1,
-        max_tokens: 1500,
-        top_p: 0.9
-      });
-
-      const writerContent = writerResponse.choices[0].message.content || '';
-      console.log(`📝 FULL Writer response for page ${pageNumber}:`, writerContent);
-
-      // Parse writer response
-      const result = this.parseEntityExtractionResponse(writerContent, text, pageNumber, bookId, categories);
-      
-      if (result.tags.length === 0) {
-        console.log(`❌ Writer found no entities on iteration ${currentIteration + 1}`);
-        break;
-      }
-
-      // REVIEWER: Validate the extraction
-      const reviewPrompt = this.buildReviewPrompt(text, categories, writerContent);
-      const reviewResponse = await this.openai.chat.completions.create({
-        model: config.lmStudio.model,
-        messages: [{ role: 'user', content: reviewPrompt }],
-        temperature: 0.1,
-        max_tokens: 800,
-        top_p: 0.9
-      });
-
-      const reviewContent = reviewResponse.choices[0].message.content || '';
-      console.log(`📝 FULL Reviewer response for page ${pageNumber}:`, reviewContent);
-
-      // Check if reviewer approves
-      const reviewResult = this.parseReviewResponse(reviewContent);
-      
-      if (reviewResult.approved) {
-        console.log(`✅ Reviewer APPROVED extraction for page ${pageNumber}`);
-        console.log(`✅ Final approved tags: ${result.tags.map(t => `${t.name} (${categories.find(c => c.id === t.categoryId)?.name})`).join(', ')}`);
-        
-        // FINAL VALIDATION: Remove any entities that don't match data types
-        const validatedResult = this.finalDataTypeValidation(result, categories);
-        return validatedResult;
-      } else {
-        console.log(`❌ Reviewer REJECTED extraction for page ${pageNumber}`);
-        console.log(`❌ Rejection reason: ${reviewResult.feedback}`);
-        console.log(`❌ Rejected tags: ${result.tags.map(t => `${t.name} (${categories.find(c => c.id === t.categoryId)?.name})`).join(', ')}`);
-        
-        // Use reviewer feedback for next iteration
-        lastFeedback = reviewResult.feedback || 'Previous extraction was rejected, please try different entities';
-        currentIteration++;
-      }
-    }
-
-    console.log(`❌ Max iterations reached for page ${pageNumber}, no approved result`);
-    return { tags: [], taggedContent: [] };
-  }
   
   /**
    * Final validation to ensure data type compliance after reviewer approval
    */
-  private finalDataTypeValidation(
-    result: { tags: Tag[]; taggedContent: Omit<TaggedContent, 'bookId' | 'pageId'>[] },
-    categories: TagCategory[]
-  ): { tags: Tag[]; taggedContent: Omit<TaggedContent, 'bookId' | 'pageId'>[] } {
-    const validTags: Tag[] = [];
-    const validContent: Omit<TaggedContent, 'bookId' | 'pageId'>[] = [];
-    const validTagIds = new Set<string>();
-    
-    for (const tag of result.tags) {
-      const category = categories.find(c => c.id === tag.categoryId);
-      if (!category) {
-        console.log(`⚠️ Category not found for tag: ${tag.name}`);
-        continue;
-      }
-      
-      // STRICT data type validation
-      const isValid = isValidEntityForDataType(tag.value || tag.name, category.dataType || 'text');
-      
-      if (isValid) {
-        validTags.push(tag);
-        validTagIds.add(tag.id);
-        console.log(`✅ Final validation passed: "${tag.name}" for ${category.name}`);
-      } else {
-        console.log(`❌ Final validation failed: "${tag.name}" doesn't match data type ${category.dataType}`);
-      }
-    }
-    
-    // Only keep content for valid tags
-    for (const content of result.taggedContent) {
-      if (validTagIds.has(content.tagId)) {
-        validContent.push(content);
-      }
-    }
-    
-    console.log(`🔍 Final validation: ${validTags.length}/${result.tags.length} tags passed data type check`);
-    
-    return { tags: validTags, taggedContent: validContent };
-  }
+
 
   private buildReviewPrompt(text: string, categories: TagCategory[], writerResponse: string): string {
     const categoryInfo = categories.map(cat => {
@@ -334,9 +238,27 @@ Your response:`;
         
         // ALLOW same entity to be used in multiple categories if it fits
         
-        const category = categories.find(c => c.name.toLowerCase() === entity.category.toLowerCase());
+        // Map English category names to actual system category names
+        const categoryNameMapping: { [key: string]: string } = {
+          'time': 'Время',
+          'people': 'Люди',
+          'location': 'Локации',
+          'technology & concepts': 'Technology & Concepts',
+          'organizations': 'Organizations',
+          'events': 'Events',
+          'ideas from past': 'Ideas from the Past'
+        };
+        
+        const entityCategoryLower = entity.category.toLowerCase();
+        const mappedName = categoryNameMapping[entityCategoryLower] || entity.category;
+        
+        const category = categories.find(c => 
+          c.name.toLowerCase() === entityCategoryLower || 
+          c.name.toLowerCase() === mappedName.toLowerCase()
+        );
+        
         if (!category) {
-          console.log('Category not found:', entity.category);
+          console.log('Category not found:', entity.category, 'Available:', categories.map(c => c.name).join(', '));
           continue;
         }
 
@@ -890,10 +812,6 @@ Your response:`;
     const end = Math.min(text.length, index + keyword.length + 100);
     
     return text.substring(start, end);
-  }
-
-  private generateId(): string {
-    return Math.random().toString(36).substr(2, 9);
   }
 }
 

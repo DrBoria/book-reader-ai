@@ -17,8 +17,11 @@ export class TagRepository {
         const category = record.get('c').properties;
         return {
           ...category,
-          createdAt: category.createdAt ? new Date(category.createdAt) : undefined,
-          updatedAt: category.updatedAt ? new Date(category.updatedAt) : undefined
+          createdAt: category.createdAt ? new Date(category.createdAt).toISOString() : undefined,
+          updatedAt: category.updatedAt ? new Date(category.updatedAt).toISOString() : undefined,
+          name: category.name || 'Unnamed Category',
+          description: category.description || '',
+          color: category.color || '#6B7280'
         };
       });
     } finally {
@@ -44,7 +47,10 @@ export class TagRepository {
         return {
           ...tag,
           contentCount,
-          createdAt: tag.createdAt ? new Date(tag.createdAt) : undefined
+          createdAt: tag.createdAt ? new Date(tag.createdAt).toISOString() : undefined,
+          name: tag.name || 'Unnamed Tag',
+          type: tag.type || 'dynamic',
+          confidence: tag.confidence || 0
         };
       });
     } finally {
@@ -179,7 +185,10 @@ export class TagRepository {
         const tag = record.get('t').properties;
         return {
           ...tag,
-          createdAt: tag.createdAt ? new Date(tag.createdAt) : undefined
+          createdAt: tag.createdAt ? new Date(tag.createdAt).toISOString() : undefined,
+          name: tag.name || 'Unnamed Tag',
+          type: tag.type || 'dynamic',
+          confidence: tag.confidence || 0
         };
       });
     } finally {

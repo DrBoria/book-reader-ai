@@ -104,9 +104,28 @@ function isValidDateEntity(value: string): boolean {
     return true;
   }
   
-  // Time periods with words
-  if (/\b(century|decade|era|period|time)\b/i.test(value)) {
+  // Seasonal dates and descriptive time periods
+  if (/\b(spring|summer|fall|autumn|winter)\s+\d{4}\b/i.test(value)) {
     return true;
+  }
+  
+  // Month + year combinations
+  if (/\b(january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sep|oct|nov|dec)\s+\d{4}\b/i.test(value)) {
+    return true;
+  }
+  
+  // Time periods with words
+  if (/\b(century|decade|era|period|time|fall|spring|summer|winter|autumn)\b/i.test(value)) {
+    return true;
+  }
+  
+  // General year detection
+  if (/\b\d{4}\b/.test(value)) {
+    const yearMatch = value.match(/\b\d{4}\b/);
+    if (yearMatch) {
+      const year = parseInt(yearMatch[0]);
+      return year >= 1000 && year <= 2100;
+    }
   }
   
   return false;

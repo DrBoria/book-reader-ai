@@ -49,7 +49,7 @@ export class EntityReviewer {
 
     const entitiesJson = JSON.stringify(input.extractedEntities, null, 2);
 
-    const prompt = `You are a quality reviewer for entity extraction. Your goal is to ensure entities are correctly categorized based on their actual meaning and the category descriptions.
+    const prompt = `You are a helpful entity categorization reviewer. Your task is to verify if extracted entities are reasonably categorized and provide constructive feedback for improvements.
 
 ORIGINAL TEXT: "${input.text}"
 
@@ -58,32 +58,37 @@ ${entitiesJson}
 
 WRITER REASONING: "${input.writerReasoning}"
 
-AVAILABLE CATEGORIES (use descriptions and keywords to judge appropriateness):
-- ${categoryInfo}
+CATEGORY DEFINITIONS FOR REVIEW:
+- Events: SPECIFIC historical occurrences, conferences, meetings, legal proceedings. Must be actual events.
+- Organizations: Companies, institutions, government agencies, formal groups, research projects.
+- Technology & Concepts: Specific technologies, programming languages, frameworks, software products.
+- People: Individual persons, historical figures, inventors, CEOs.
+- Time: Specific time periods, decades, years, dates.
+- Locations: Specific places, cities, countries, institutions.
 
-Review guidelines (use category descriptions and keywords as your guide):
+REVIEW GUIDELINES:
+- Check if entities are reasonably categorized based on the definitions
+- Focus on major miscategorizations rather than minor semantic differences
+- Allow reasonable interpretations of category boundaries
+- Be more accepting of borderline cases
 
-✅ APPROVE if entities are:
-- Correctly categorized based on their actual meaning (people in People categories, locations in Location categories, etc.)
-- Proper nouns that match the category's description and keywords
-- Correctly typed according to the specified data type
-- Actually present in the original text
+APPROVAL APPROACH:
+- APPROVE if most entities are reasonably categorized
+- Only REJECT for clear, significant miscategorizations
+- Provide specific guidance for improvements rather than blanket rejections
 
-❌ REJECT if:
-- People are categorized as Events, Locations as Organizations, etc.
-- Clear data type violations (wrong data type for category)
-- Entities that completely contradict the category description
-- Entities not found in the original text
+EXAMPLES OF REJECTIONS (only for clear cases):
+- "Microsoft" in Technology & Concepts (should be Organizations)
+- "1945" in People (should be Time)
 
-Evaluation approach:
-- Use the detailed category descriptions to judge if entities fit their assigned categories
-- Consider the provided keywords as context clues
-- Focus on whether each entity meaningfully relates to the category's purpose as described
-- Be strict about correct categorization - a person's name should not be in an Events category
+EXAMPLES TO APPROVE:
+- Borderline cases like "Internet Explorer" in Technology & Concepts
+- Reasonable interpretations of category boundaries
+- Minor semantic disagreements
 
-Respond with either:
-- APPROVED - if all entities are correctly categorized
-- REJECTED: [specific feedback] - if categorization issues are found, provide clear feedback about what needs to be corrected
+Be constructive and helpful rather than overly strict. RESPOND WITH:
+- APPROVED - if categorizations are generally reasonable
+- REJECTED: [specific entity] should be in [correct category] - only if clearly wrong
 
 Your response:`;
 
@@ -96,18 +101,44 @@ Your response:`;
     });
 
     const content = response.choices[0].message.content || '';
+    const cleaned = content.toLowerCase().trim();
     
-    if (content.toLowerCase().includes('approved')) {
+    if (cleaned.startsWith('approved')) {
       return {
         approved: true,
         approvedEntities: input.extractedEntities
       };
     }
     
-    const feedback = content.replace(/^rejected:?\s*/i, '').trim();
+    if (cleaned.startsWith('rejected')) {
+      const feedback = content.replace(/^rejected:?\s*/i, '').trim();
+      return {
+        approved: false,
+        feedback: feedback || 'Please recategorize based on the specific definitions provided'
+      };
+    }
+    
+    // Check for approval keywords
+    if (cleaned.includes('approved') || cleaned.includes('accept') || cleaned.includes('correct')) {
+      return {
+        approved: true,
+        approvedEntities: input.extractedEntities
+      };
+    }
+    
+    // Check for rejection keywords
+    if (cleaned.includes('rejected') || cleaned.includes('incorrect') || cleaned.includes('wrong')) {
+      const feedback = content.replace(/^.*?(rejected|incorrect|wrong)/i, '').trim();
+      return {
+        approved: false,
+        feedback: feedback || 'Please recategorize based on the specific definitions provided'
+      };
+    }
+    
+    // Default to rejected with specific guidance
     return {
       approved: false,
-      feedback: feedback || 'Categorization issues found, please review category assignments'
+      feedback: 'Please recategorize based on the specific definitions provided'
     };
   }
 }

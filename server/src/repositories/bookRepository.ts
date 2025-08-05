@@ -189,8 +189,11 @@ export class BookRepository {
       const book = result.records[0].get('b').properties;
       return {
         ...book,
-        uploadedAt: new Date(book.uploadedAt),
-        processedAt: book.processedAt ? new Date(book.processedAt) : undefined
+        uploadedAt: book.uploadedAt ? new Date(book.uploadedAt).toISOString() : new Date().toISOString(),
+        processedAt: book.processedAt ? new Date(book.processedAt).toISOString() : undefined,
+        totalPages: book.totalPages || 0,
+        title: book.title || 'Untitled',
+        author: book.author || 'Unknown Author'
       };
     } finally {
       await session.close();
@@ -210,8 +213,8 @@ export class BookRepository {
         const book = record.get('b').properties;
         return {
           ...book,
-          uploadedAt: new Date(book.uploadedAt),
-          processedAt: book.processedAt ? new Date(book.processedAt) : undefined
+          uploadedAt: book.uploadedAt ? new Date(book.uploadedAt).toISOString() : new Date().toISOString(),
+          processedAt: book.processedAt ? new Date(book.processedAt).toISOString() : undefined
         };
       });
     } finally {

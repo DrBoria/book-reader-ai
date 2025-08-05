@@ -89,17 +89,29 @@ export class SearchService {
         
         return {
           content: {
-            ...content,
-            pageNumber,
-            createdAt: new Date(content.createdAt)
+            id: content.id || '',
+            bookId: content.bookId || '',
+            pageId: content.pageId || '',
+            tagId: tag.id || '',
+            content: content.content || '',
+            pageNumber: pageNumber || 0,
+            relevance: content.relevance || 0,
+            context: content.context || '',
+            originalText: content.originalText || '',
+            createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : new Date().toISOString()
           } as TaggedContent,
           book: {
-            ...book,
-            uploadedAt: new Date(book.uploadedAt),
-            processedAt: book.processedAt ? new Date(book.processedAt) : undefined
+            id: book.id || '',
+            title: book.title || 'Untitled',
+            author: book.author || 'Unknown Author',
+            filename: book.filename || '',
+            totalPages: book.totalPages || 0,
+            uploadedAt: book.uploadedAt ? new Date(book.uploadedAt).toISOString() : new Date().toISOString(),
+            processedAt: book.processedAt ? new Date(book.processedAt).toISOString() : undefined,
+            status: book.status || 'completed'
           },
           score,
-          highlights
+          highlights: highlights || []
         };
       });
     } finally {
@@ -137,7 +149,12 @@ export class SearchService {
         return {
           ...content,
           pageNumber,
-          createdAt: new Date(content.createdAt)
+          createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : new Date().toISOString(),
+          content: content.content || '',
+          relevance: content.relevance || 0,
+          context: content.context || '',
+          originalText: content.originalText || '',
+          tagId: tagId
         } as TaggedContent;
       });
     } finally {
