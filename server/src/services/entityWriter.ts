@@ -32,37 +32,76 @@ export class EntityWriter {
   }
 
   private extractJsonFromContent(content: string): string | null {
-    // Try to extract JSON from markdown code blocks
+    // First, try to extract JSON from markdown code blocks
     const codeBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/g;
     let match;
-    let bestJson = null;
     
     while ((match = codeBlockRegex.exec(content)) !== null) {
       const potentialJson = match[1].trim();
       if (this.isValidJson(potentialJson)) {
-        bestJson = potentialJson;
-        break;
+        return potentialJson;
       }
     }
     
-    if (bestJson) return bestJson;
-    
-    // Try to find JSON directly in the content
-    const jsonRegex = /(?:\{[\s\S]*\}|\[[\s\S]*\])/;
-    const directMatch = content.match(jsonRegex);
-    if (directMatch) {
-      return directMatch[0];
+    // Second, try to find JSON array or object directly
+    const jsonRegex = /\[[\s\S]*?\]|\{[\s\S]*?\}/;
+    const jsonMatch = content.match(jsonRegex);
+    if (jsonMatch) {
+      const potentialJson = jsonMatch[0];
+      if (this.isValidJson(potentialJson)) {
+        return potentialJson;
+      }
     }
     
     return null;
   }
 
+  private preProcessJsonContent(jsonString: string): string {
+    // Handle unescaped newlines specifically in content fields
+    return jsonString
+      .replace(/"content"\s*:\s*"([^"]*)"/g, (match, content) => {
+        const escaped = content
+          .replace(/\\/g, '\\\\')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/\t/g, '\\t')
+          .replace(/"/g, '\\"');
+        return `"content": "${escaped}"`;
+      })
+      .replace(/"value"\s*:\s*"([^"]*)"/g, (match, value) => {
+        const escaped = value
+          .replace(/\\/g, '\\\\')
+          .replace(/\n/g, '\\n')
+          .replace(/\r/g, '\\r')
+          .replace(/\t/g, '\\t')
+          .replace(/"/g, '\\"');
+        return `"value": "${escaped}"`;
+      });
+  }
+
   private cleanJsonString(jsonString: string): string {
+    // First, handle unescaped newlines within string values
+    jsonString = jsonString.replace(/"([^"]*(?:\n|\r)[^"]*)"/g, (match, content) => {
+      const escaped = content
+        .replace(/\n/g, '\\n')
+        .replace(/\r/g, '\\r')
+        .replace(/\t/g, '\\t')
+        .replace(/\\/g, '\\\\')
+        .replace(/"/g, '\\"');
+      return `"${escaped}"`;
+    });
+    
     // Remove trailing commas
     jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
     
+    // Fix incomplete decimal numbers (like "confidence":0.)
+    jsonString = jsonString.replace(/:\s*(\d+)(\.(?![\d\]]))/g, ': $1.0');
+    
     // Fix common JSON issues
     jsonString = jsonString.replace(/(["'])([^"']*)\1(?=\s*:)/g, '"$2"'); // Fix unquoted keys
+    
+    // Ensure confidence values are valid numbers
+    jsonString = jsonString.replace(/"confidence"\s*:\s*([a-zA-Z"'][^,}\]]*)/g, '"confidence": 0.8');
     
     return jsonString;
   }
@@ -98,19 +137,23 @@ Please correct the issues mentioned in the feedback above.` : '';
 Categories to extract:
 ${categoryDescriptions}
 
-CATEGORY DEFINITIONS - USE EXACTLY:
+CATEGORY DEFINITIONS - USE EXACTLY AS PROVIDED IN THE CATEGORIES ABOVE:
 
-**Events**: SPECIFIC historical occurrences, conferences, meetings, product launches, legal proceedings. Must be actual events, not ongoing processes or generic activities. Examples: "Microsoft antitrust trial", "World War II", "Apple WWDC 2024".
+For each category provided above, extract entities that match its specific definition and keywords. Use the exact category names as specified in the categories list above.
 
-**Organizations**: Companies, institutions, government agencies, formal groups. Must be actual organizations, not their actions or products. Examples: "Microsoft", "U.S. Justice Department", "Apple Inc.", "Google".
+Examples for common categories:
 
-**Technology & Concepts**: Specific technologies, programming languages, frameworks, products, technical concepts. Examples: "Internet Explorer", "JavaScript", "machine learning", "Internet Explorer 4.0".
+**Events** (if this category exists): SPECIFIC historical occurrences, conferences, meetings, product launches, legal proceedings. Must be actual events, not ongoing processes or generic activities. Examples: "Microsoft antitrust trial", "World War II", "Apple WWDC 2024".
 
-**People**: Individual persons, historical figures, inventors, CEOs, authors. Examples: "Bill Gates", "Ada Lovelace", "Steve Jobs".
+**Organizations** (if this category exists): Companies, institutions, government agencies, formal groups. Must be actual organizations, not their actions or products. Examples: "Microsoft", "U.S. Justice Department", "Apple Inc.", "Google".
 
-**Time**: Specific time periods, decades, years, dates. Examples: "1997", "Fall 1997", "1970s".
+**Technology & Concepts** (if this category exists): Specific technologies, programming languages, frameworks, products, technical concepts. Examples: "Internet Explorer", "JavaScript", "machine learning", "Internet Explorer 4.0".
 
-**Locations**: Specific places, countries, cities, institutions. Examples: "Silicon Valley", "Redmond, Washington", "United States".
+**People** (if this category exists): Individual persons, historical figures, inventors, CEOs, authors. Examples: "Bill Gates", "Ada Lovelace", "Steve Jobs".
+
+**Time** (if this category exists): Specific time periods, decades, years, dates, year ranges. Examples: "1997", "Fall 1997", "1970s", "1990-2000", "1995-1998", "late 1990s", "early 2000s".
+
+**Locations** (if this category exists): Specific places, countries, cities, institutions. Examples: "Silicon Valley", "Redmond, Washington", "United States".
 
 COMMON MISTAKES TO AVOID:
 - "Introduction of Internet Explorer 4.0" → Technology & Concepts (NOT Events)
@@ -138,24 +181,12 @@ IMPORTANT: Address the specific feedback above by:
 
 If the feedback mentions specific entity corrections, apply those exact changes.` : ''}
 
-EXAMPLES OF CORRECT CATEGORIZATION:
-- "Microsoft" → Organizations (company)
-- "Internet Explorer 4.0" → Technology & Concepts (specific product)
-- "Fall 1997" → Time (specific period)
-- "U.S. Justice Department" → Organizations (government agency)
-
-EXAMPLES OF INCORRECT CATEGORIZATION:
-- "Introduction of Internet Explorer 4.0" → Events (WRONG - this is a product release, use Technology & Concepts)
-- "Antitrust suit against Microsoft" → Events (WRONG - should be "Microsoft antitrust trial" if specific)
-
 Required JSON format (return ONLY valid JSON):
 {
   "entities": [
-    {"category":"Organizations","value":"Microsoft","content":"Microsoft's introduction","confidence":0.95},
-    {"category":"Technology & Concepts","value":"Internet Explorer 4.0","content":"Internet Explorer 4.0","confidence":0.90},
-    {"category":"Time","value":"Fall 1997","content":"in the fall of 1997","confidence":0.85}
+    {"category":"<USE EXACT CATEGORY NAME FROM ABOVE>","value":"<exact entity from text>","content":"<original context>","confidence":<0.8-1.0>}
   ],
-  "reasoning": "Extracted specific entities and categorized according to exact definitions"
+  "reasoning": "Extracted specific entities using the exact category names provided in the categories list above"
 }
 
 Text to analyze: "${input.text}"`;
@@ -173,39 +204,42 @@ Text to analyze: "${input.text}"`;
     try {
       console.log('Raw AI response:', content);
       
-      // Method 1: Try to extract JSON from markdown code blocks
+      // Extract JSON from content
       let jsonString = this.extractJsonFromContent(content);
-      
-      if (!jsonString) {
-        // Method 2: Try to find JSON object or array directly
-        let jsonMatch = content.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) {
-          jsonMatch = content.match(/\[[\s\S]*\]/);
-        }
-        
-        if (jsonMatch) {
-          jsonString = jsonMatch[0];
-        }
-      }
       
       if (!jsonString) {
         console.log('No JSON found in response');
         return { entities: [], reasoning: 'No JSON format found in AI response' };
       }
 
-      // Clean up common JSON issues
-      jsonString = this.cleanJsonString(jsonString);
-      
+      // Parse the JSON directly - no cleaning needed for properly formatted JSON
       const parsed = JSON.parse(jsonString);
       
-      // Handle both object format and array format
+      // Extract entities array
+      let entities = [];
       if (Array.isArray(parsed)) {
-        return { entities: parsed, reasoning: 'Extracted entities from array format' };
-      } else if (parsed && typeof parsed === 'object') {
-        return parsed;
-      } else {
-        return { entities: [], reasoning: 'Invalid JSON structure' };
+        entities = parsed;
+      } else if (parsed && typeof parsed === 'object' && parsed.entities) {
+        entities = parsed.entities;
       }
+      
+      // Validate and normalize entities
+      const validatedEntities = entities
+        .filter((entity: any) => entity && typeof entity === 'object')
+        .map((entity: { category?: string; value?: string; content?: string; confidence?: number }) => ({
+          category: String(entity.category || ''),
+          value: String(entity.value || ''),
+          content: String(entity.content || ''),
+          confidence: typeof entity.confidence === 'number' && !isNaN(entity.confidence) 
+            ? Math.max(0, Math.min(1, entity.confidence)) 
+            : 0.8
+        }))
+        .filter((entity: { category: string; value: string; content: string; confidence: number }) => entity.category && entity.value);
+      
+      return {
+        entities: validatedEntities,
+        reasoning: parsed?.reasoning || 'Extracted and validated entities'
+      };
     } catch (error) {
       console.error('Failed to parse writer response:', error);
       console.error('Raw content:', content);

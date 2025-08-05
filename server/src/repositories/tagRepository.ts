@@ -123,7 +123,7 @@ export class TagRepository {
         })
         ON CREATE SET 
           t.id = $id,
-          t.confidence = $confidence,
+          t.confidence = coalesce($confidence, 0.8),
           t.createdAt = datetime()
         MERGE (t)-[:BELONGS_TO]->(c)
         RETURN t.id as tagId
@@ -133,7 +133,7 @@ export class TagRepository {
         value: tag.value,
         bookId: tag.bookId,
         categoryId: tag.categoryId,
-        confidence: tag.confidence
+        confidence: tag.confidence ?? 0.8
       });
       
       return result.records[0].get('tagId');

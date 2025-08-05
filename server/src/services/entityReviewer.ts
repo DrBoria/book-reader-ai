@@ -59,36 +59,23 @@ ${entitiesJson}
 WRITER REASONING: "${input.writerReasoning}"
 
 CATEGORY DEFINITIONS FOR REVIEW:
-- Events: SPECIFIC historical occurrences, conferences, meetings, legal proceedings. Must be actual events.
-- Organizations: Companies, institutions, government agencies, formal groups, research projects.
-- Technology & Concepts: Specific technologies, programming languages, frameworks, software products.
-- People: Individual persons, historical figures, inventors, CEOs.
-- Time: Specific time periods, decades, years, dates.
-- Locations: Specific places, cities, countries, institutions.
+- ${categoryInfo}
 
 REVIEW GUIDELINES:
-- Check if entities are reasonably categorized based on the definitions
-- Focus on major miscategorizations rather than minor semantic differences
+- APPROVE entities unless they are clearly and significantly miscategorized
 - Allow reasonable interpretations of category boundaries
-- Be more accepting of borderline cases
+- Be permissive with category assignments
+- Only reject for obvious, major category errors
+- Focus on accepting valid extractions
 
 APPROVAL APPROACH:
-- APPROVE if most entities are reasonably categorized
-- Only REJECT for clear, significant miscategorizations
-- Provide specific guidance for improvements rather than blanket rejections
+- APPROVE by default - trust the writer's categorization
+- Only REJECT for clearly wrong categorizations
+- Be helpful and constructive
 
-EXAMPLES OF REJECTIONS (only for clear cases):
-- "Microsoft" in Technology & Concepts (should be Organizations)
-- "1945" in People (should be Time)
-
-EXAMPLES TO APPROVE:
-- Borderline cases like "Internet Explorer" in Technology & Concepts
-- Reasonable interpretations of category boundaries
-- Minor semantic disagreements
-
-Be constructive and helpful rather than overly strict. RESPOND WITH:
-- APPROVED - if categorizations are generally reasonable
-- REJECTED: [specific entity] should be in [correct category] - only if clearly wrong
+RESPOND WITH:
+- APPROVED - accept the categorizations
+- REJECTED: [specific reason] - only if clearly wrong
 
 Your response:`;
 

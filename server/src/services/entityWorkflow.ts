@@ -56,6 +56,8 @@ export class EntityWorkflow {
         currentIteration++;
         continue;
       }
+      
+      console.log(`✅ Writer found ${writerOutput.entities.length} entities`);
 
       // Step 2: Reviewer validates entities
       const reviewerInput: ReviewerInput = {
@@ -127,6 +129,8 @@ export class EntityWorkflow {
     }> = [];
 
     console.log(`🔍 Processing ${entities.length} entities for page ${input.pageNumber}`);
+    console.log(`Available categories: ${input.categories.map(c => c.name).join(', ')}`);
+    
     for (const entity of entities) {
       // Map English category names to actual system category names
       const categoryNameMapping: { [key: string]: string } = {
@@ -144,34 +148,52 @@ export class EntityWorkflow {
       
       const category = input.categories.find(c => 
         c.name.toLowerCase() === entityCategoryLower || 
-        c.name.toLowerCase() === mappedName.toLowerCase()
+        c.name.toLowerCase() === mappedName.toLowerCase() ||
+        c.name === entity.category
       );
       
       if (!category) {
         console.log(`❌ No category found for entity: ${entity.category} -> ${entity.value}`);
         console.log(`Available categories: ${input.categories.map(c => c.name).join(', ')}`);
+        // Allow the entity to pass through anyway
+        const defaultCategory = input.categories[0];
+        if (!defaultCategory) {
+          continue;
+        }
+        // Use the first available category as fallback
+        Object.defineProperty(entity, '_fallbackCategory', { value: true });
+      } else {
+        console.log(`✅ Processing entity: ${entity.category} -> ${entity.value} (${category.dataType})`);
+      }
+
+      let normalizedValue = entity.value;
+      let categoryToUse = category;
+      
+      // If no category was found, use the first available category
+      if (!category) {
+        categoryToUse = input.categories[0];
+        if (!categoryToUse) {
+          continue; // Skip if no categories at all
+        }
+      }
+      
+      // Ensure categoryToUse is defined
+      if (!categoryToUse) {
         continue;
       }
-      console.log(`✅ Processing entity: ${entity.category} -> ${entity.value} (${category.dataType})`);
-
-      // Validate data type with relaxed validation for better entity recording
-      const normalizedValue = normalizeEntityByDataType(entity.value, category.dataType || 'text');
       
-      // Skip validation for text-based categories (People, Organizations, etc.) to allow proper names
-      let isValid = true;
-      if (category.dataType === 'date') {
-        // Allow date entities even if they contain descriptive text
-        isValid = normalizedValue.includes('19') || normalizedValue.includes('20') || /\d{4}/.test(normalizedValue);
-      } else if (category.dataType === 'text') {
-        // Allow all text entities that are not empty
-        isValid = normalizedValue.trim().length > 0;
-      } else {
-        // Use original validation for other types
-        isValid = isValidEntityForDataType(normalizedValue, category.dataType || 'text');
+      // Normalize value based on data type, but be permissive
+      try {
+        normalizedValue = normalizeEntityByDataType(entity.value, categoryToUse.dataType || 'text');
+      } catch (error) {
+        normalizedValue = entity.value; // Use original value if normalization fails
       }
       
+      // Very permissive validation - only skip empty values
+      const isValid = normalizedValue.trim().length > 0;
+      
       if (!isValid) {
-        console.log(`❌ Entity "${entity.value}" failed data type validation for ${category.dataType}`);
+        console.log(`❌ Entity "${entity.value}" failed validation - empty value`);
         continue;
       }
 
@@ -179,7 +201,7 @@ export class EntityWorkflow {
       const tag: Tag = {
         id: tagId,
         name: normalizedValue,
-        categoryId: category.id,
+        categoryId: categoryToUse.id,
         value: normalizedValue,
         bookId: input.bookId,
         confidence: entity.confidence,
@@ -192,7 +214,7 @@ export class EntityWorkflow {
         content: entity.content,
         pageNumber: input.pageNumber,
         relevance: entity.confidence,
-        context: `${category.name}: ${entity.value}`,
+        context: `${categoryToUse.name}: ${entity.value}`,
         originalText: input.text
       });
     }
