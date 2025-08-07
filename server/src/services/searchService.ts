@@ -1,5 +1,5 @@
 import { database } from '../database/neo4j';
-import { SearchQuery, SearchResult, TaggedContent, ContentReference } from '../types';
+import { SearchQuery, SearchResult, TaggedContent, ContentReference, BookContent } from '../types';
 import { AITaggingService } from './aiTagging';
 import { config } from '../config';
 import { OpenAI } from 'openai';
@@ -76,7 +76,7 @@ export class SearchService {
       
       const result = await session.run(cypher, params);
       
-      return result.records.map(record => {
+      return result.records.map((record: any) => {
         const content = record.get('c').properties;
         const book = record.get('b').properties;
         const tag = record.get('t').properties;
@@ -98,7 +98,7 @@ export class SearchService {
             relevance: content.relevance || 0,
             context: content.context || '',
             originalText: content.originalText || '',
-            createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : new Date().toISOString()
+            createdAt: content.createdAt ? new Date(content.createdAt) : new Date()
           } as TaggedContent,
           book: {
             id: book.id || '',
@@ -106,10 +106,10 @@ export class SearchService {
             author: book.author || 'Unknown Author',
             filename: book.filename || '',
             totalPages: book.totalPages || 0,
-            uploadedAt: book.uploadedAt ? new Date(book.uploadedAt).toISOString() : new Date().toISOString(),
-            processedAt: book.processedAt ? new Date(book.processedAt).toISOString() : undefined,
+            uploadedAt: book.uploadedAt ? new Date(book.uploadedAt) : new Date(),
+            processedAt: book.processedAt ? new Date(book.processedAt) : undefined,
             status: book.status || 'completed'
-          },
+          } as BookContent,
           score,
           highlights: highlights || []
         };
@@ -149,7 +149,7 @@ export class SearchService {
         return {
           ...content,
           pageNumber,
-          createdAt: content.createdAt ? new Date(content.createdAt).toISOString() : new Date().toISOString(),
+          createdAt: content.createdAt ? new Date(content.createdAt) : new Date(),
           content: content.content || '',
           relevance: content.relevance || 0,
           context: content.context || '',
@@ -181,14 +181,59 @@ export class SearchService {
         };
       }
       
-      // Step 3: AI generates answer using only relevant data
-      const contextText = relevantData.slice(0, 10).map(result => 
-        `Book: "${result.book.title}", Page ${result.content.pageNumber}: "${result.content.content}"`
+      // Step 3: AI generates answer using relevant data from multiple books
+      // Group results by book to ensure we get information from all books
+      const resultsByBook = new Map<string, typeof relevantData>();
+      relevantData.forEach(result => {
+        const bookId = result.book.id;
+        if (!resultsByBook.has(bookId)) {
+          resultsByBook.set(bookId, []);
+        }
+        resultsByBook.get(bookId)!.push(result);
+      });
+      
+      console.log('Results distribution by book:');
+      for (const [bookId, bookResults] of resultsByBook) {
+        const bookTitle = bookResults[0]?.book.title || 'Unknown';
+        console.log(`- "${bookTitle}": ${bookResults.length} results`);
+      }
+      
+      // If we have multiple books but results from only one, try to get more results
+      const requestedBooks = bookIds?.length || 0;
+      const booksWithResults = resultsByBook.size;
+      
+      if (requestedBooks > 1 && booksWithResults === 1) {
+        console.log(`WARNING: Requested ${requestedBooks} books but only found results in ${booksWithResults} book(s)`);
+        console.log('This might indicate that other books don\'t contain relevant content for this query');
+      }
+      
+      // Take top results from each book to ensure multi-book coverage
+      const balancedResults: typeof relevantData = [];
+      const targetTotalResults = 1000; // Increased from 15
+      const minPerBook = 50; // Minimum results per book if available
+      const maxPerBook = Math.max(minPerBook, Math.floor(targetTotalResults / Math.max(resultsByBook.size, 1)));
+      
+      console.log(`Taking max ${maxPerBook} results per book (min ${minPerBook}) for balanced coverage`);
+      
+      for (const [bookId, bookResults] of resultsByBook) {
+        const selectedResults = bookResults.slice(0, maxPerBook);
+        balancedResults.push(...selectedResults);
+        console.log(`- Selected ${selectedResults.length} results from "${bookResults[0]?.book.title}"`);
+      }
+      
+      // Sort by relevance and take top results overall
+      balancedResults.sort((a, b) => b.score - a.score);
+      const finalResults = balancedResults.slice(0, targetTotalResults);
+      
+      console.log(`Final context includes ${finalResults.length} results from ${resultsByBook.size} books`);
+      
+      const contextText = finalResults.map(result => 
+        `Book: "${result.book.title}" by ${result.book.author} (ID: ${result.book.id}), Page ${result.content.pageNumber}: "${result.content.content}"`
       ).join('\n\n');
       
       const answer = await this.generateAnswerWithContext(question, contextText);
       
-      const references: ContentReference[] = relevantData.slice(0, 10).map(result => ({
+      const references: ContentReference[] = finalResults.map(result => ({
         bookId: result.book.id,
         pageNumber: result.content.pageNumber,
         quote: result.content.content,
@@ -246,16 +291,20 @@ Available tag categories: ${categoriesWithKeywords.map(c => `"${c.name}"`).join(
 Return a JSON object with:
 - categories: array of relevant tag categories 
 - keywords: array of important keywords from the question
-- timeFrame: if question asks about time/dates, specify the time period
+- timeFrame: ONLY include if question specifically asks about a narrow time period like "1940s" or "19th century". For general questions about history, origins, or invention - DO NOT include timeFrame.
 - needsSpecific: boolean - true if question needs specific facts, false if asking for general overview
 
 Guidelines:
 ${categoryGuidelines}
 - Extract meaningful keywords regardless of language
 - If question is general/broad, set needsSpecific to false
+- For questions about "first", "origin", "history", "development", "invention" - do NOT specify timeFrame
+- Expand keywords to include related terms: for "computers" also include "calculator", "machine", "device", "technology", "digital", "electronic"
+- Only include timeFrame for questions like "what happened in 1940s" or "events of 19th century"
 
 Examples:
 {"categories": ["Time", "People"], "keywords": ["war", "leaders"], "timeFrame": "1940s", "needsSpecific": true}
+{"categories": ["Technology"], "keywords": ["computers", "calculator", "machine", "device", "technology", "invention", "history"], "needsSpecific": false}
 {"categories": ["Location"], "keywords": ["action", "events"], "needsSpecific": true}
 
 Response:`;
@@ -297,122 +346,208 @@ Response:`;
   ): Promise<SearchResult[]> {
     const session = await database.getSession();
     try {
-      let cypher = `
-        MATCH (b:Book)-[:HAS_PAGE]->(p:Page)-[:HAS_CONTENT]->(c:Content)-[:TAGGED_AS]->(t:Tag)
-        MATCH (t)-[:BELONGS_TO]->(cat:TagCategory)
-      `;
-      
-      const params: any = {};
-      const conditions: string[] = [];
-      
-      // Filter by categories if specified
-      if (strategy.categories.length > 0) {
-        // Map English category names to database IDs
-        const categoryMapping: Record<string, string> = {
-          'Time': 'time',
-          'People': 'people', 
-          'Location': 'location'
-        };
+      // If searching multiple books, query each book separately to ensure balanced results
+      if (bookIds && bookIds.length > 1) {
+        console.log(`Multi-book search: querying ${bookIds.length} books separately`);
+        const allResults: SearchResult[] = [];
+        const resultsPerBook = strategy.needsSpecific ? 8 : 15; // Results per book
         
-        const categoryIds = strategy.categories.map(cat => categoryMapping[cat]).filter(Boolean);
-        if (categoryIds.length > 0) {
-          conditions.push('cat.id IN $categoryIds');
-          params.categoryIds = categoryIds;
+        for (const bookId of bookIds) {
+          const bookResults = await this.queryBookForResults(session, strategy, [bookId], tagId, resultsPerBook);
+          allResults.push(...bookResults);
+          console.log(`Found ${bookResults.length} results in book: ${bookResults[0]?.book.title || bookId}`);
         }
-      }
-      
-      // Filter by keywords in content
-      if (strategy.keywords.length > 0) {
-        const keywordConditions = strategy.keywords.map((_, index) => 
-          `toLower(c.content) CONTAINS toLower($keyword${index}) OR toLower(c.originalText) CONTAINS toLower($keyword${index})`
-        );
-        conditions.push(`(${keywordConditions.join(' OR ')})`);
         
-        strategy.keywords.forEach((keyword, index) => {
-          params[`keyword${index}`] = keyword;
-        });
+        return allResults;
+      } else {
+        // Single book or no book filter - use original logic
+        return await this.queryBookForResults(session, strategy, bookIds, tagId, strategy.needsSpecific ? 20 : 40);
       }
-      
-      // Filter by time frame if specified
-      if (strategy.timeFrame) {
-        conditions.push('toLower(c.content) CONTAINS toLower($timeFrame) OR toLower(t.name) CONTAINS toLower($timeFrame)');
-        params.timeFrame = strategy.timeFrame;
-      }
-      
-      // Add book and tag filters
-      if (bookIds && bookIds.length > 0) {
-        conditions.push('b.id IN $bookIds');
-        params.bookIds = bookIds;
-      }
-      
-      if (tagId) {
-        conditions.push('t.id = $tagId');
-        params.tagId = tagId;
-      }
-      
-      if (conditions.length > 0) {
-        cypher += ` WHERE ${conditions.join(' AND ')}`;
-      }
-      
-      cypher += `
-        RETURN c, b, t, p.pageNumber as pageNumber
-        ORDER BY c.relevance DESC, c.createdAt DESC
-        LIMIT $limit
-      `;
-      
-      params.limit = neo4j.int(strategy.needsSpecific ? 10 : 20);
-      
-      console.log('Executing cypher:', cypher);
-      console.log('With params:', params);
-      
-      const result = await session.run(cypher, params);
-      
-      return result.records.map(record => {
-        const content = record.get('c').properties;
-        const book = record.get('b').properties;
-        const tag = record.get('t').properties;
-        const pageNumber = record.get('pageNumber');
-        
-        return {
-          content: {
-            ...content,
-            pageNumber,
-            createdAt: new Date(content.createdAt)
-          } as TaggedContent,
-          book: {
-            ...book,
-            uploadedAt: new Date(book.uploadedAt),
-            processedAt: book.processedAt ? new Date(book.processedAt) : undefined
-          },
-          score: parseFloat(content.relevance) || 0.5
-        };
-      });
     } finally {
       await session.close();
     }
   }
 
+  private async queryBookForResults(
+    session: any,
+    strategy: { categories: string[]; keywords: string[]; timeFrame?: string; needsSpecific: boolean },
+    bookIds?: string[],
+    tagId?: string,
+    limit: number = 20
+  ): Promise<SearchResult[]> {
+    let cypher = `
+      MATCH (b:Book)-[:HAS_PAGE]->(p:Page)-[:HAS_CONTENT]->(c:Content)-[:TAGGED_AS]->(t:Tag)
+      MATCH (t)-[:BELONGS_TO]->(cat:TagCategory)
+    `;
+    
+    const params: any = {};
+    const conditions: string[] = [];
+    
+    // Filter by categories if specified
+    if (strategy.categories.length > 0) {
+      // Map English category names to database IDs
+      const categoryMapping: Record<string, string> = {
+        'Time': 'time',
+        'People': 'people', 
+        'Location': 'location'
+      };
+      
+      const categoryIds = strategy.categories.map(cat => categoryMapping[cat]).filter(Boolean);
+      if (categoryIds.length > 0) {
+        conditions.push('cat.id IN $categoryIds');
+        params.categoryIds = categoryIds;
+      }
+    }
+    
+    // Filter by keywords in content - use flexible matching
+    if (strategy.keywords.length > 0) {
+      const keywordConditions = strategy.keywords.map((_, index) => 
+        `(
+          toLower(c.content) CONTAINS toLower($keyword${index}) OR 
+          toLower(c.originalText) CONTAINS toLower($keyword${index}) OR
+          toLower(t.name) CONTAINS toLower($keyword${index})
+        )`
+      );
+      conditions.push(`(${keywordConditions.join(' OR ')})`);
+      
+      strategy.keywords.forEach((keyword, index) => {
+        params[`keyword${index}`] = keyword;
+      });
+    }
+    
+    // Filter by time frame if specified - only for specific year formats
+    if (strategy.timeFrame) {
+      // Only apply time filter for specific year formats (e.g., "1940s", "1940", "19th century")
+      const yearPattern = /^\d{4}s?$|^\d{1,2}(st|nd|rd|th) century$/;
+      if (yearPattern.test(strategy.timeFrame)) {
+        conditions.push('toLower(c.content) CONTAINS toLower($timeFrame) OR toLower(t.name) CONTAINS toLower($timeFrame)');
+        params.timeFrame = strategy.timeFrame;
+      }
+    }
+    
+    // Add book and tag filters
+    if (bookIds && bookIds.length > 0) {
+      conditions.push('b.id IN $bookIds');
+      params.bookIds = bookIds;
+    }
+    
+    if (tagId) {
+      conditions.push('t.id = $tagId');
+      params.tagId = tagId;
+    }
+    
+    // Add basic quality filtering (less restrictive)
+    const qualityConditions = [
+      'size(c.content) > 10',  // Reduced minimum content length
+      'NOT (c.content =~ "^\\s*\\d+\\s*$")'  // Exclude just page numbers
+    ];
+    
+    if (conditions.length > 0) {
+      cypher += ` WHERE ${conditions.join(' AND ')} AND ${qualityConditions.join(' AND ')}`;
+    } else {
+      cypher += ` WHERE ${qualityConditions.join(' AND ')}`;
+    }
+    
+    cypher += `
+      RETURN c, b, t, p.pageNumber as pageNumber
+      ORDER BY c.relevance DESC, c.createdAt DESC
+      LIMIT $limit
+    `;
+    
+    params.limit = neo4j.int(limit);
+    
+    if (bookIds && bookIds.length === 1) {
+      console.log(`Querying single book: ${bookIds[0]}`);
+    }
+    
+    const result = await session.run(cypher, params);
+    
+    return result.records.map((record: any) => {
+      const content = record.get('c').properties;
+      const book = record.get('b').properties;
+      const tag = record.get('t').properties;
+      const pageNumber = record.get('pageNumber');
+      
+      return {
+        content: {
+          id: content.id || '',
+          bookId: book.id || '',
+          pageId: content.pageId || '',
+          tagId: tag.id || '',
+          content: content.content || '',
+          pageNumber: pageNumber || 0,
+          relevance: parseFloat(content.relevance) || 0.5,
+          context: content.context || '',
+          originalText: content.originalText || '',
+          createdAt: content.createdAt ? new Date(content.createdAt) : new Date()
+        } as TaggedContent,
+        book: {
+          id: book.id || '',
+          title: book.title || 'Untitled',
+          author: book.author || 'Unknown Author',
+          filename: book.filename || '',
+          totalPages: book.totalPages || 0,
+          uploadedAt: book.uploadedAt ? new Date(book.uploadedAt) : new Date(),
+          processedAt: book.processedAt ? new Date(book.processedAt) : undefined,
+          status: book.status || 'completed'
+        } as BookContent,
+        score: parseFloat(content.relevance) || 0.5,
+        highlights: [] // Add empty highlights array for now
+      };
+    });
+  }
+
   private async generateAnswerWithContext(question: string, context: string): Promise<string> {
     try {
-      const prompt = `Answer the following question based on the provided book content. Give a direct, informative answer in the same language as the question.
+      const prompt = `You must answer the question using ONLY the exact format shown below. Do not deviate from this format.
 
 Question: ${question}
 
-Book content:
+Book content from multiple sources:
 ${context}
 
-Instructions:
-- Answer directly and specifically
-- Use information from the book content
-- If you find specific dates, names, or places, mention them
-- Keep the answer concise but informative
-- Answer in the same language as the question`;
+MANDATORY FORMAT - Follow this EXACTLY:
+
+**Statement 1:** [Write a detailed point about the topic - 2-4 sentences]
+
+> **Quote from [Book Title] (ID: [book-id]), Page [X]:** "[Exact quote 1 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Y]:** "[Exact quote 2 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Z]:** "[Exact quote 3 from the content above]"
+
+**Statement 2:** [Write another detailed point about the topic - 2-4 sentences]
+
+> **Quote from [Book Title] (ID: [book-id]), Page [X]:** "[Exact quote 1 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Y]:** "[Exact quote 2 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Z]:** "[Exact quote 3 from the content above]"
+
+**Statement 3:** [Write another detailed point about the topic - 2-4 sentences]
+
+> **Quote from [Book Title] (ID: [book-id]), Page [X]:** "[Exact quote 1 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Y]:** "[Exact quote 2 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Z]:** "[Exact quote 3 from the content above]"
+
+**Statement 4:** [Write another detailed point about the topic - 2-4 sentences]
+
+> **Quote from [Book Title] (ID: [book-id]), Page [X]:** "[Exact quote 1 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Y]:** "[Exact quote 2 from the content above]"
+> **Quote from [Book Title] (ID: [book-id]), Page [Z]:** "[Exact quote 3 from the content above]"
+
+CRITICAL RULES:
+1. Generate 4-6 detailed statements maximum
+2. Each statement should be 2-4 sentences with comprehensive explanation
+3. Each statement must be followed by 2-10 supporting quotes from different books/pages
+4. Use ONLY quotes from the provided content above
+5. Include exact book title, book ID, and page number for every quote in the format: "Quote from [Title] (ID: [id]), Page [X]"
+6. Do not add any introduction, conclusion, or additional text
+7. Start directly with "**Statement 1:**"
+8. Answer in the same language as the question
+9. Ensure quotes come from multiple different books when available`;
 
       const response = await this.openai.chat.completions.create({
         model: config.lmStudio.model,
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.3,
-        max_tokens: 500
+        max_tokens: 15000
       });
 
       const content = response.choices[0].message.content || `Sorry, I couldn't generate an answer based on the available content.`;
