@@ -140,9 +140,14 @@ export class SearchService {
         ORDER BY c.relevance DESC, c.createdAt DESC
       `;
       
+      console.log(`🔍 SearchService.getContentByTag - Executing query:`, cypher);
+      console.log(`📋 Parameters:`, params);
+      
       const result = await session.run(cypher, params);
       
-      return result.records.map(record => {
+      console.log(`📊 Query returned ${result.records.length} records`);
+      
+      const mappedResults = result.records.map(record => {
         const content = record.get('c').properties;
         const pageNumber = record.get('pageNumber');
         
@@ -157,6 +162,9 @@ export class SearchService {
           tagId: tagId
         } as TaggedContent;
       });
+      
+      console.log(`✅ SearchService.getContentByTag - Returning ${mappedResults.length} items`);
+      return mappedResults;
     } finally {
       await session.close();
     }

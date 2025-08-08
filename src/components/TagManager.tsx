@@ -9,6 +9,7 @@ interface CategoryManagerProps {
   onAddCategory: (category: { name: string; description?: string; color?: string; dataType?: string }) => Promise<TagCategory | null>;
   onClose: () => void;
   onCategoriesUpdate?: () => void;
+  isModal?: boolean;
 }
 
 export const CategoryManager: React.FC<CategoryManagerProps> = ({
@@ -16,7 +17,8 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
   categories,
   onAddCategory,
   onClose,
-  onCategoriesUpdate
+  onCategoriesUpdate,
+  isModal = true
 }) => {
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDescription, setNewCategoryDescription] = useState("");
@@ -176,9 +178,17 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
 
   // Show existing categories and their tag counts
 
+  const containerClass = isModal 
+    ? "fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
+    : "w-full h-full";
+    
+  const contentClass = isModal
+    ? "bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto"
+    : "bg-white rounded-lg shadow-xl w-full h-full overflow-y-auto";
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto">
+    <div className={containerClass}>
+      <div className={contentClass}>
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">Category Manager</h2>
@@ -196,12 +206,14 @@ export const CategoryManager: React.FC<CategoryManagerProps> = ({
               )}
               <span>{isCleaningUp ? 'Fuzzy Merging...' : 'Fuzzy Merge Tags'}</span>
             </button>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
-            >
-              <X className="h-6 w-6" />
-            </button>
+            {isModal && (
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="h-6 w-6" />
+              </button>
+            )}
           </div>
         </div>
 

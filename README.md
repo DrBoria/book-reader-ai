@@ -2,9 +2,22 @@
 
 AI-powered book analysis system with real-time tagging and intelligent chat interface.
 
+## Quick Install
+
+```bash
+# 1. Install pnpm
+npm install -g pnpm
+
+# 2. Setup everything
+pnpm run setup
+
+# 3. Start LM Studio with DeepSeek R1 model
+# 4. Start app
+pnpm run dev
+```
+
 ## Architecture
 
-This application consists of:
 - **Frontend**: React + TypeScript (Vite)
 - **Backend**: Express.js + TypeScript
 - **Database**: Neo4j (Graph Database)
@@ -23,112 +36,39 @@ This application consists of:
 
 ## Prerequisites
 
-### Required Software
+- **Node.js** (v18+)
+- **Docker** (for Neo4j + Redis)
+- **LM Studio** with DeepSeek R1 model
 
-1. **Node.js** (v18 or later)
-2. **Neo4j** (v5.x)
-3. **Redis** (v6.x or later)
-4. **LM Studio** with DeepSeek R1 model
+## Setup
 
-### Setup Instructions
-
-#### 1. Install Dependencies
-
+### 1. Install pnpm
 ```bash
-# Frontend
-npm install
-
-# Backend
-cd server
-npm install
-cd ..
+npm install -g pnpm
 ```
 
-#### 2. Setup Database Services (Docker)
-
-Используем Docker Compose для запуска Neo4j и Redis:
-
+### 2. Install & Setup
 ```bash
-# Запустить все сервисы в фоне
-cd server
-docker-compose up -d
-
-# Проверить статус сервисов
-docker-compose ps
-
-# Посмотреть логи при необходимости
-docker-compose logs neo4j
-docker-compose logs redis
+pnpm run setup
 ```
 
-**Альтернативная установка без Docker:**
-
-<details>
-<summary>Ручная установка Neo4j и Redis</summary>
-
-**Neo4j:**
-1. Download and install Neo4j Desktop
-2. Create a new database  
-3. Set password for 'neo4j' user
-4. Start the database
-
-**Redis:**
-```bash
-# macOS с Homebrew
-brew install redis
-brew services start redis
-
-# Ubuntu/Debian
-sudo apt install redis-server
-sudo systemctl start redis
-```
-</details>
-
-#### 3. Setup LM Studio
-
-1. Download LM Studio from https://lmstudio.ai/
-2. Install DeepSeek R1 model (or compatible model)
-3. Start local server on port 1234
-4. Verify model is loaded and accessible
-
-#### 4. Environment Configuration
-
-Create `.env` file in the `server` directory:
-
+### 3. Configure Environment
 ```bash
 cp server/.env.example server/.env
+cp .env.example .env.local
 ```
 
-Edit `server/.env` with your configuration:
+**Important:** Edit both `.env` files and replace `localhost` with your LM Studio IP address if running on a different machine.
 
-```env
-# Server Configuration
-PORT=3001
-NODE_ENV=development
+### 4. Start LM Studio
+- Download from https://lmstudio.ai/
+- Load **claude-3.7-sonnet-reasoning-gemma3-12b** model
+- Start server on port 1234
+- Update IP in `.env` files if needed
 
-# Redis Configuration
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-
-# Neo4j Configuration
-NEO4J_URI=bolt://localhost:7687
-NEO4J_USER=neo4j
-NEO4J_PASSWORD=your_password_here
-
-# LM Studio Configuration
-LM_STUDIO_HOST=http://localhost:1234
-LM_STUDIO_MODEL=deepseek/deepseek-r1-0528-qwen3-8b
-
-# File Upload
-MAX_FILE_SIZE=10485760
-UPLOAD_DIR=./uploads
-```
-
-Create `.env.local` file in the root directory:
-
-```env
-VITE_API_BASE_URL=http://localhost:3001/api
+### 5. Run App
+```bash
+pnpm run dev
 ```
 
 ## Running the Application

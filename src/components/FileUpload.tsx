@@ -73,21 +73,6 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessi
         onChange={handleFileSelect}
         className="hidden"
       />
-      
-      <div className="mt-6 text-sm text-gray-500">
-        <p className="mb-2">🤖 DeepSeek R1 + LM Studio AI agent automatically:</p>
-        <ul className="text-left max-w-md mx-auto space-y-1">
-          <li>• 🕒 Extracts temporal references</li>
-          <li>• 👥 Identifies mentioned people</li>
-          <li>• 🏷️ Categorizes themes and concepts</li>
-          <li>• 📍 Finds mentioned places</li>
-          <li>• ➕ Allows custom tag creation</li>
-          <li>• 💬 Answers questions about the text</li>
-        </ul>
-        <p className="mt-4 text-xs text-green-600">
-          🔒 Fully local processing - your data stays on your computer
-        </p>
-      </div>
     </div>
   );
 };

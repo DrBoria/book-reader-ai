@@ -200,7 +200,7 @@ export const ChatInterface: React.FC<ChatInterfaceProps> = ({
                               </div>
                               <div>
                                 <strong>Full context:</strong>
-                                <div className="mt-1 whitespace-pre-wrap leading-relaxed">
+                                <div className="mt-1 leading-relaxed">
                                   {loadingPages.has(referenceId) ? (
                                     <div className="flex items-center">
                                       <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>

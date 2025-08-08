@@ -1,12 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { BookContent, Tag, TaggedContent, ChatMessage, TagCategory } from "./types";
-import { FileUpload } from "./components/FileUpload";
-import { TagPanel } from "./components/TagPanel";
-import { ContentDisplay } from "./components/ContentDisplay";
-import { ChatInterface } from "./components/ChatInterface";
-import { CategoryManager } from "./components/TagManager";
-import { BookSelector } from "./components/BookSelector";
-import { SearchScope } from "./components/SearchScope";
+import { Sidebar, ActiveView } from "./components/Sidebar";
+import { MainContent } from "./components/MainContent";
 import { bookService } from "./services/bookService";
 import { tagService } from "./services/tagService";
 import { searchService } from "./services/searchService";
@@ -22,8 +17,8 @@ const App: React.FC = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
-  const [showCategoryManager, setShowCategoryManager] = useState(false);
-  const [showNewBookUpload, setShowNewBookUpload] = useState(false);
+  const [activeView, setActiveView] = useState<ActiveView>('books');
+  const [sidebarWidth, setSidebarWidth] = useState(256); // Default expanded width in pixels
   const [searchScope, setSearchScope] = useState<'all' | 'book' | 'tag'>('all');
   const [connectionStatus, setConnectionStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
 
@@ -175,7 +170,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleChatMessage = async (message: string) => {
+  const handleChatMessage = async (message: string): Promise<void> => {
     const userMessage: ChatMessage = {
       id: Math.random().toString(36),
       type: "user",
@@ -226,12 +221,11 @@ const App: React.FC = () => {
     setCurrentBook(book);
     setSelectedTag(null);
     setTaggedContent([]);
-    setShowNewBookUpload(false);
     setSearchScope(book ? 'book' : 'all');
   };
 
   const handleNewBook = () => {
-    setShowNewBookUpload(true);
+    setActiveView('upload');
     setCurrentBook(null);
     setSelectedTag(null);
     setTaggedContent([]);
@@ -335,141 +329,78 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
+    <div className="min-h-screen bg-gray-50 flex">
+      <Sidebar
+        activeView={activeView}
+        onViewChange={setActiveView}
+        bookCount={books.length}
+        tagCount={tags.length}
+        onWidthChange={setSidebarWidth}
+      />
+      
+      <div 
+        className="flex-1 flex flex-col transition-all duration-300 ease-in-out"
+        style={{ marginLeft: `${sidebarWidth}px` }}
+      >
+        <header className="bg-white shadow-sm border-b px-6 py-4 flex-shrink-0">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                📚 Book Reader AI Agent (DeepSeek R1 + LM Studio)
+              <h1 className="text-xl font-bold text-gray-900">
+                Book Reader AI Agent
               </h1>
-              <p className="text-gray-600 mt-1">
-                AI agent for PDF book analysis powered by DeepSeek R1 via LM Studio
+              <p className="text-sm text-gray-600">
+                DeepSeek R1 + LM Studio
               </p>
             </div>
             <div className="text-right">
               {connectionStatus === 'connecting' && (
-                <div className="text-yellow-600">🔄 Connecting to server...</div>
+                <div className="text-yellow-600 text-sm">🔄 Connecting...</div>
               )}
               {connectionStatus === 'connected' && (
-                <div className="text-green-600">✅ Server Connected</div>
+                <div className="text-green-600 text-sm">✅ Connected</div>
               )}
               {connectionStatus === 'disconnected' && (
-                <div className="text-red-600">❌ Server Unavailable</div>
+                <div className="text-red-600 text-sm">❌ Offline</div>
               )}
               {isProcessing && processingProgress > 0 && (
-                <div className="text-blue-600">
-                  📚 Processing: {processingProgress}%
+                <div className="text-blue-600 text-sm">
+                  📚 {processingProgress}%
                 </div>
               )}
             </div>
           </div>
-        </div>
-      </header>
+        </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-6">
-        <div className="grid grid-cols-12 gap-6">
-          {/* Left Sidebar - Books & Tags */}
-          <div className="col-span-3 space-y-4">
-            {/* Book Selector */}
-            <BookSelector
+        <div className="flex-1 overflow-y-auto">
+            <MainContent
+              activeView={activeView}
               books={books}
               currentBook={currentBook}
+              tags={tags}
+              categories={categories}
+              selectedTag={selectedTag}
+              taggedContent={taggedContent}
+              isProcessing={isProcessing}
+              processingProgress={processingProgress}
+              chatMessages={chatMessages}
+              searchScope={searchScope}
               onBookSelect={handleBookSelect}
               onNewBook={handleNewBook}
               onUpdateBook={handleUpdateBook}
               onDeleteBook={handleDeleteBook}
+              onTagSelect={handleTagSelect}
+              onAddCustomCategory={handleAddCustomCategory}
+              onDeleteTag={handleDeleteTag}
+              onBulkDeleteTags={handleBulkDeleteTags}
+              onFileUpload={handleFileUpload}
+              onChatMessage={handleChatMessage}
+              onScopeChange={handleScopeChange}
+              onCategoriesUpdate={refreshCategories}
             />
-
-            {/* Tags Panel - only show if we have books */}
-            {books.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border">
-                <div className="p-4 border-b">
-                  <div className="flex justify-between items-center">
-                    <h3 className="text-lg font-semibold">Tags</h3>
-                    <button
-                      onClick={() => setShowCategoryManager(true)}
-                      className="text-blue-600 hover:text-blue-800 text-sm"
-                    >
-                      Manage Categories
-                    </button>
-                  </div>
-                </div>
-                <div className="p-4 max-h-[calc(100vh-550px)] overflow-y-auto">
-                  <TagPanel
-                    tags={tags}
-                    categories={categories}
-                    taggedContent={taggedContent}
-                    selectedTag={selectedTag}
-                    onTagSelect={handleTagSelect}
-                    onDeleteTag={handleDeleteTag}
-                    onBulkDeleteTags={handleBulkDeleteTags}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Main Content Area */}
-          <div className="col-span-9">
-            {books.length === 0 || showNewBookUpload ? (
-              <div className="text-center py-12">
-                <FileUpload onFileUpload={handleFileUpload} isProcessing={isProcessing} />
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Search Scope */}
-                <SearchScope
-                  currentBook={currentBook}
-                  selectedTag={selectedTag}
-                  tags={tags}
-                  onScopeChange={handleScopeChange}
-                />
-
-                <div className="grid grid-cols-2 gap-6 h-[calc(100vh-250px)]">
-                  {/* Content Display */}
-                  <div className="bg-white rounded-lg shadow-sm border overflow-y-auto">
-                    <ContentDisplay
-                      book={currentBook}
-                      taggedContent={taggedContent}
-                      selectedTag={selectedTag}
-                      tags={tags}
-                      isProcessing={isProcessing}
-                      processingProgress={processingProgress}
-                    />
-                  </div>
-
-                  {/* Chat Interface */}
-                  <div className="bg-white rounded-lg shadow-sm border flex flex-col">
-                    <div className="p-4 border-b">
-                      <h3 className="text-lg font-semibold">AI Assistant</h3>
-                    </div>
-                    <div className="flex-1 overflow-hidden">
-                      <ChatInterface
-                        messages={chatMessages}
-                        onSendMessage={handleChatMessage}
-                        isBookLoaded={books.length > 0}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
           </div>
         </div>
-      </main>
-
-      {showCategoryManager && (
-        <CategoryManager
-          tags={tags}
-          categories={categories}
-          onAddCategory={handleAddCustomCategory}
-          onClose={() => setShowCategoryManager(false)}
-          onCategoriesUpdate={refreshCategories}
-        />
-      )}
-    </div>
-  );
-};
+      </div>
+    );
+  };
 
 export default App;

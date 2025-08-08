@@ -89,10 +89,25 @@ router.get('/:tagId/content', async (req, res) => {
     const { tagId } = req.params;
     const { bookId } = req.query;
 
+    console.log(`🔍 Fetching content for tag: ${tagId}, bookId: ${bookId}`);
+
+    // First check if tag exists
+    const allTags = await tagRepo.getAllTags();
+    const tag = allTags.find(t => t.id === tagId);
+    
+    if (!tag) {
+      console.log(`❌ Tag not found: ${tagId}`);
+      return res.status(404).json({ error: 'Tag not found' });
+    }
+    
+    console.log(`✅ Tag found: ${tag.name} (category: ${tag.categoryId})`);
+
     const content = await searchService.getContentByTag(
       tagId, 
       bookId as string
     );
+    
+    console.log(`📄 Found ${content.length} content items for tag ${tagId}`);
     
     res.json(content);
   } catch (error) {

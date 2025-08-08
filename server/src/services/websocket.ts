@@ -26,7 +26,7 @@ export class WebSocketService {
   initialize(server: Server): void {
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: "http://localhost:3000", // Frontend dev server
+        origin: ["http://localhost:3000"], // Frontend dev server
         methods: ["GET", "POST"]
       }
     });
