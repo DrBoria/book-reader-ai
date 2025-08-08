@@ -73,38 +73,38 @@ pnpm run dev
 
 ## Running the Application
 
-### Быстрый старт с Docker
+### Quick Start with Docker
 
 ```bash
-# 1. Запустить базы данных
+# 1. Start databases
 cd server
 ./scripts/setup.sh
 
-# 2. Настроить LM Studio
-# Открыть LM Studio, загрузить модель DeepSeek R1, запустить локальный сервер
+# 2. Configure LM Studio
+# Open LM Studio, load DeepSeek R1 model, start local server
 
-# 3. Запустить backend (новый терминал)
+# 3. Start backend (new terminal)
 npm run dev
 
-# 4. Запустить frontend (новый терминал)
+# 4. Start frontend (new terminal)
 cd ..
 npm run dev
 ```
 
-### Подробные шаги
+### Detailed Steps
 
 #### 1. Start Backend Services
 
 ```bash
-# Запустить Neo4j и Redis с Docker
+# Start Neo4j and Redis with Docker
 cd server
 docker-compose up -d
 
-# Или использовать setup скрипт для автоматической настройки
+# Or use setup script for automatic configuration
 ./scripts/setup.sh
 
-# Запустить LM Studio сервер
-# Открыть LM Studio, загрузить DeepSeek R1 модель, запустить локальный сервер
+# Start LM Studio server
+# Open LM Studio, load DeepSeek R1 model, start local server
 ```
 
 #### 2. Start Application
@@ -186,16 +186,16 @@ Set `NODE_ENV=development` in server/.env for detailed logs.
 ### Docker Commands
 
 ```bash
-# Остановить все сервисы
+# Stop all services
 docker-compose down
 
-# Перезапустить сервисы  
+# Restart services  
 docker-compose restart
 
-# Просмотр логов
+# View logs
 docker-compose logs -f
 
-# Очистить данные (ВНИМАНИЕ: удалит все данные!)
+# Clear data (WARNING: will delete all data!)
 docker-compose down -v
 ```
 
