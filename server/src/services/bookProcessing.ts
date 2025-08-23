@@ -7,7 +7,7 @@ import { PDFParsingService } from './pdfParsing';
 import { WebSocketService } from './websocket';
 
 export async function processBookJob(job: Job<BookProcessingJobData>) {
-  const { bookId, filePath, tags } = job.data;
+  const { bookId, filePath } = job.data;
   
   const bookRepo = new BookRepository();
   const tagRepo = new TagRepository();

@@ -4,14 +4,11 @@ import path from 'path';
 import { config } from '../config';
 import { database } from '../database/neo4j';
 import { BookRepository } from '../repositories/bookRepository';
-import { TagRepository } from '../repositories/tagRepository';
 import { queueService } from '../services/queue';
 import { PDFParsingService } from '../services/pdfParsing';
-import { ProcessingJob } from '../types';
 
 const router: Router = Router();
 const bookRepo = new BookRepository();
-const tagRepo = new TagRepository();
 const pdfService = new PDFParsingService();
 
 // Configure multer for file uploads

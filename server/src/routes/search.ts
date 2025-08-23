@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { SearchService } from '../services/searchService';
 import { z } from 'zod';
 
-const router = Router();
+const router: Router = Router();
 const searchService = new SearchService();
 
 // Validation schemas

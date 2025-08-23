@@ -13,11 +13,11 @@ mkdir -p uploads
 
 # Start services with Docker Compose
 echo "📦 Starting Neo4j and Redis with Docker Compose..."
-docker-compose up -d
+cd "$(dirname "$0")/.." && docker-compose up -d
 
 # Show status
 echo "📊 Docker containers status:"
-docker-compose ps
+cd "$(dirname "$0")/.." && docker-compose ps
 
 # Wait for services to be ready
 echo "⏳ Waiting for services to start..."
@@ -32,7 +32,7 @@ for i in {1..30}; do
     fi
     if [ $i -eq 30 ]; then
         echo "❌ Neo4j failed to start"
-        echo "💡 Try checking with: docker-compose logs neo4j"
+        echo "💡 Try checking with: cd \"$(dirname \"$0\")\"/../.. && docker-compose logs neo4j"
         exit 1
     fi
     sleep 2
@@ -42,7 +42,7 @@ done
 echo "🔍 Checking Redis connection..."
 for i in {1..30}; do
     # Try docker exec first, fallback to network check
-    if docker exec book-reader-redis redis-cli ping > /dev/null 2>&1; then
+    if (cd "$(dirname "$0")/.." && docker exec book-reader-redis redis-cli ping > /dev/null 2>&1); then
         echo "✅ Redis is ready!"
         break
     elif nc -z localhost 6379 > /dev/null 2>&1; then
@@ -51,11 +51,39 @@ for i in {1..30}; do
     fi
     if [ $i -eq 30 ]; then
         echo "❌ Redis failed to start"
-        echo "💡 Try checking with: docker-compose logs redis"
+        echo "💡 Try checking with: cd \"$(dirname \"$0\")\"/../.. && docker-compose logs redis"
         exit 1
     fi
     sleep 1
 done
+
+# Initialize database schema
+echo "🗄️  Initializing database schema..."
+
+# Check if Node.js is available
+if ! command -v node &> /dev/null; then
+    echo "❌ Node.js is not installed"
+    exit 1
+fi
+
+# Run the TypeScript initialization script
+cd "$(dirname "$0")/.."
+
+if command -v tsx &> /dev/null; then
+    npx tsx src/database/initSchema.ts
+elif command -v ts-node &> /dev/null; then
+    npx ts-node src/database/initSchema.ts
+else
+    echo "⚠️  Neither tsx nor ts-node found, building and running..."
+    pnpm build && node dist/database/initSchema.js
+fi
+
+if [ $? -eq 0 ]; then
+    echo "✅ Database schema initialized successfully!"
+else
+    echo "❌ Failed to initialize database schema"
+    exit 1
+fi
 
 echo "🎉 Setup complete!"
 echo ""
