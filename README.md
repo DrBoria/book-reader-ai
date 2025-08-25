@@ -11,7 +11,7 @@ npm install -g pnpm
 # 2. Setup everything
 pnpm run setup
 
-# 3. Start LM Studio with DeepSeek R1 model
+# 3. Start LM Studio with any model (tested on Claude 3.7 - works good, deepseek - not recommended)
 # 4. Start app
 pnpm run dev
 ```
