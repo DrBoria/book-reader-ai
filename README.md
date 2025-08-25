@@ -22,7 +22,7 @@ pnpm run dev
 - **Backend**: Express.js + TypeScript
 - **Database**: Neo4j (Graph Database)
 - **Queue**: Redis + Bull Queue
-- **AI**: LM Studio + DeepSeek R1 model
+- **AI**: LM Studio + Claude 3.7 model
 - **Real-time**: WebSocket (Socket.io)
 
 ## Features
