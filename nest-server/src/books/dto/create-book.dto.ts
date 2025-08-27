@@ -5,14 +5,9 @@ import {
   Min,
   IsEnum,
   Length,
+  IsDateString,
 } from 'class-validator';
-
-export enum BookStatus {
-  UPLOADING = 'uploading',
-  PROCESSING = 'processing',
-  COMPLETED = 'completed',
-  ERROR = 'error',
-}
+import { BookStatus } from '../entities/book.entity';
 
 export class CreateBookDto {
   @IsString()
@@ -30,8 +25,31 @@ export class CreateBookDto {
 
   @IsNumber()
   @Min(1)
-  totalPages: number;
+  @IsOptional()
+  totalPages?: number;
+
+  @IsString()
+  @IsOptional()
+  filePath?: string;
+
+  @IsNumber()
+  @Min(0)
+  @IsOptional()
+  size?: number;
 
   @IsEnum(BookStatus)
-  status: BookStatus;
+  @IsOptional()
+  status?: BookStatus;
+
+  @IsDateString()
+  @IsOptional()
+  processedAt?: string;
+
+  @IsDateString()
+  @IsOptional()
+  uploadedAt?: string;
+
+  @IsString()
+  @IsOptional()
+  mimetype?: string;
 }

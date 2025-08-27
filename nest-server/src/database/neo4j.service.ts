@@ -1,61 +1,28 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
-import neo4j, { Driver, Session } from 'neo4j-driver';
-import { config } from '../config';
-
-interface QueryResult {
-  [key: string]: any;
-}
+import { Injectable, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { NeoGM } from 'neogm';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
-export class Neo4jService implements OnModuleDestroy {
-  private driver: Driver;
+export class Neo4jService implements OnModuleInit, OnModuleDestroy {
+  private neoGM: NeoGM;
 
-  constructor() {
-    this.driver = neo4j.driver(
-      config.neo4j.uri,
-      neo4j.auth.basic(config.neo4j.user, config.neo4j.password),
-    );
+  constructor(private configService: ConfigService) {
+    this.neoGM = new NeoGM({
+      uri: this.configService.get<string>('NEO4J_URI', 'bolt://localhost:7687'),
+      user: this.configService.get<string>('NEO4J_USER', 'neo4j'),
+      password: this.configService.get<string>('NEO4J_PASSWORD', 'password'),
+    });
   }
 
-  getSession(): Session {
-    return this.driver.session();
-  }
-
-  async testConnection(): Promise<boolean> {
-    const session = this.getSession();
-    try {
-      await session.run('RETURN 1');
-      return true;
-    } catch (error) {
-      console.error('Neo4j connection failed:', error);
-      return false;
-    } finally {
-      await session.close();
-    }
+  async onModuleInit() {
+    await this.neoGM.connect();
   }
 
   async onModuleDestroy(): Promise<void> {
-    await this.driver.close();
+    await this.neoGM.disconnect();
   }
 
-  async runQuery(
-    query: string,
-    parameters?: Record<string, any>,
-  ): Promise<QueryResult[]> {
-    const session = this.getSession();
-    try {
-      const result = await session.run(query, parameters || {});
-      return result.records.map((record) => {
-        const keys = record.keys;
-        const obj: QueryResult = {};
-        keys.forEach((key) => {
-          const value = record.get(key);
-          obj[key as string] = value;
-        });
-        return obj;
-      });
-    } finally {
-      await session.close();
-    }
+  getNeoGM(): NeoGM {
+    return this.neoGM;
   }
 }

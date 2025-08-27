@@ -1,53 +1,69 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
-import { Book } from './entities/book.entity';
+import { Neo4jService } from '../database/neo4j.service';
+import { Book, BookStatus } from './entities/book.entity';
+import { QueueService } from '../queue/queue.service';
 
-interface NeoGMRepository<T> {
-  create(data: Partial<T>): T;
-  save(entity: T): Promise<T>;
-  find(options?: any): Promise<T[]>;
-  findById(id: string): Promise<T | null>;
-  delete(criteria: any): Promise<void>;
-}
-
-interface NeoGMWithRepository {
-  getRepository<T>(entityClass: new () => T): NeoGMRepository<T>;
-  createEntity<T>(entityClass: new () => T, data: Partial<T>): T;
-}
+import { Repository } from 'neogm';
+import * as crypto from 'crypto';
 
 @Injectable()
 export class BooksService {
-  private readonly bookRepository: NeoGMRepository<Book>;
+  private readonly bookRepository: Repository<Book>;
 
   constructor(
-    @Inject('NEOGM_CONNECTION') private readonly neogm: NeoGMWithRepository,
+    private readonly neo4jService: Neo4jService,
+    private readonly queueService: QueueService
   ) {
-    this.bookRepository = this.neogm.getRepository(Book);
+    const neogm = this.neo4jService.getNeoGM();
+    this.bookRepository = neogm.getRepository(Book);
   }
 
   async create(createBookDto: CreateBookDto): Promise<Book> {
-    const book = this.neogm.createEntity(Book, createBookDto);
+    const book = await this.bookRepository.create({
+      ...createBookDto,
+      id: crypto.randomUUID(),
+      uploadedAt: createBookDto.uploadedAt || new Date().toISOString(),
+      status: createBookDto.status || BookStatus.PENDING,
+    });
     return await this.bookRepository.save(book);
+  }
+
+  async processBook(
+    bookId: string,
+    filePath: string,
+    tags: string[] = []
+  ): Promise<void> {
+    await this.queueService.addBookProcessingJob({
+      bookId,
+      filePath,
+      tags,
+    });
   }
 
   async findAll(): Promise<Book[]> {
-    return await this.bookRepository.find({ order: { uploadedAt: 'DESC' } });
+    const allBooks = await this.bookRepository.find({ orderBy: 'uploadedAt DESC' });
+    return allBooks;
   }
 
   async findOne(id: string): Promise<Book | null> {
-    return await this.bookRepository.findById(id);
+    return await this.bookRepository.findOne({ id });
   }
 
   async update(id: string, updateBookDto: UpdateBookDto): Promise<Book | null> {
-    const book = await this.bookRepository.findById(id);
+    const book = await this.bookRepository.findOne({ id });
     if (!book) return null;
 
     Object.assign(book, updateBookDto);
-    return await this.bookRepository.save(book);
+    return this.bookRepository.save(book);
   }
 
-  async remove(id: string): Promise<void> {
-    await this.bookRepository.delete({ id });
+  async remove(id: string): Promise<Book | null> {
+    const book = await this.findOne(id);
+    if (!book) return null;
+
+    await this.bookRepository.delete(book);
+    return book;
   }
 }

@@ -1,57 +1,50 @@
 import { Node, Property, BaseEntity } from 'neogm';
 
+export enum BookStatus {
+  PENDING = 'pending',
+  PROCESSING = 'processing',
+  COMPLETED = 'completed',
+  ERROR = 'error'
+}
+
 @Node('Book')
 export class Book extends BaseEntity {
   @Property({ required: true, unique: true })
   id!: string;
 
-  @Property({
-    required: true,
-    validator: (title: string) =>
-      typeof title === 'string' && title.length > 0 && title.length <= 500,
-  })
+  @Property({ required: true })
   title!: string;
 
-  @Property({
-    required: false,
-    validator: (author?: string) =>
-      author === undefined ||
-      (typeof author === 'string' && author.length > 0 && author.length <= 200),
-  })
-  author?: string;
+  @Property({ required: true })
+  author!: string;
 
-  @Property({
-    required: true,
-    validator: (filename: string) => typeof filename === 'string' && filename.length > 0 && filename.includes('.'),
-  })
+  @Property({ required: true })
   filename!: string;
 
-  @Property({
-    required: true,
-    validator: (totalPages: number) =>
-      Number.isInteger(totalPages) && totalPages > 0,
-  })
-  totalPages!: number;
+  @Property({ required: false })
+  totalPages?: number;
+
+  @Property({ required: true })
+  uploadedAt!: string;
+
+  @Property({ required: false })
+  processedAt?: string;
 
   @Property({
-    required: true,
-    validator: (uploadedAt: Date) =>
-      uploadedAt instanceof Date && uploadedAt <= new Date(),
+    type: 'string',
+    required: true
   })
-  uploadedAt!: Date;
+  status: BookStatus = BookStatus.PENDING;
 
-  @Property({
-    required: false,
-    validator: (processedAt?: Date) =>
-      processedAt === undefined ||
-      (processedAt instanceof Date && processedAt <= new Date()),
-  })
-  processedAt?: Date;
+  @Property({ type: 'string', required: false })
+  filePath?: string;
 
-  @Property({
-    required: true,
-    validator: (status: string) =>
-      ['uploading', 'processing', 'completed', 'error'].includes(status),
-  })
-  status!: 'uploading' | 'processing' | 'completed' | 'error';
+  @Property({ type: 'number', required: false })
+  size?: number;
+
+  @Property({ required: true })
+  createdAt: string = new Date().toISOString();
+
+  @Property({ required: true })
+  updatedAt: string = new Date().toISOString();
 }
