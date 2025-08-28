@@ -102,7 +102,7 @@ Return a JSON object with:
       "category": "exact category name",
       "value": "extracted entity text",
       "content": "original context from text",
-      "confidence": 0.8
+      "confidence": 0.85
     }
   ],
   "reasoning": "Brief explanation of extraction decisions"
@@ -112,16 +112,19 @@ Text to analyze: "${input.text}"`;
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post('http://localhost:1234/v1/chat/completions', {
-          model: 'llama-3.2-3b-instruct',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
-          max_tokens: 1500,
-          top_p: 0.9,
-        }),
+        this.httpService.post(
+          `${process.env.LM_STUDIO_HOST}${process.env.LM_STUDIO_API_ENDPOINT}`,
+          {
+            model: process.env.LM_STUDIO_MODEL,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: parseFloat(process.env.LM_STUDIO_DEFAULT_TEMPERATURE || '0.1'),
+            max_tokens: parseInt(process.env.LM_STUDIO_DEFAULT_MAX_TOKENS || '1500'),
+            top_p: parseFloat(process.env.LM_STUDIO_DEFAULT_TOP_P || '0.9'),
+          },
+        ),
       );
 
-      const content = response.data.choices[0].message.content || '';
+      const content = (response.data as any).choices[0].message.content || '';
 
       console.log('Raw AI response:', content);
 
@@ -137,14 +140,14 @@ Text to analyze: "${input.text}"`;
       }
 
       // Parse the JSON directly - no cleaning needed for properly formatted JSON
-      const parsed = JSON.parse(jsonString);
+      const parsed = JSON.parse(jsonString) as any;
 
       // Extract entities array
       let entities: any[] = [];
       if (Array.isArray(parsed)) {
         entities = parsed;
       } else if (parsed && typeof parsed === 'object' && parsed.entities) {
-        entities = parsed.entities;
+        entities = (parsed as any).entities;
       }
 
       // Validate and normalize entities
@@ -163,7 +166,7 @@ Text to analyze: "${input.text}"`;
             confidence:
               typeof entity.confidence === 'number' && !isNaN(entity.confidence)
                 ? Math.max(0, Math.min(1, entity.confidence))
-                : 0.8,
+                : 0.85,
           }),
         )
         .filter(

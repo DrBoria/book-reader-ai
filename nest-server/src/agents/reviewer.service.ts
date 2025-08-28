@@ -1,7 +1,17 @@
 import { Injectable } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
-import { firstValueFrom } from 'rxjs';
+import { AxiosResponse } from 'axios';
+
+interface LMStudioResponse {
+  choices: Array<{
+    message: {
+      content: string;
+    };
+  }>;
+}
+
 import { Category } from '../category/category.entity';
+import { firstValueFrom } from 'rxjs';
 
 export interface ReviewerInput {
   text: string;
@@ -28,7 +38,7 @@ export interface ReviewerOutput {
 
 @Injectable()
 export class EntityReviewer {
-  constructor(private readonly httpService: HttpService) {}
+  constructor(private readonly httpService: HttpService) { }
 
   async reviewEntities(input: ReviewerInput): Promise<ReviewerOutput> {
     const categoryInfo = input.categories
@@ -79,17 +89,20 @@ Your response:`;
 
     try {
       const response = await firstValueFrom(
-        this.httpService.post('http://localhost:1234/v1/chat/completions', {
-          model: 'llama-3.2-3b-instruct',
-          messages: [{ role: 'user', content: prompt }],
-          temperature: 0.1,
-          max_tokens: 800,
-          top_p: 0.9,
-        }),
+        this.httpService.post(
+          `${process.env.LM_STUDIO_HOST}${process.env.LM_STUDIO_API_ENDPOINT}`,
+          {
+            model: process.env.LM_STUDIO_MODEL,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: parseFloat(process.env.LM_STUDIO_DEFAULT_TEMPERATURE || '0.1'),
+            max_tokens: parseInt(process.env.LM_STUDIO_DEFAULT_MAX_TOKENS || '1500'),
+            top_p: parseFloat(process.env.LM_STUDIO_DEFAULT_TOP_P || '0.9'),
+          },
+        ),
       );
 
-      const content = response.data.choices[0].message.content || '';
-      const cleaned = content.toLowerCase().trim();
+      const content = (response.data as any).choices[0].message.content || '';
+      const cleaned: string = content.toLowerCase().trim();
 
       if (cleaned.startsWith('approved')) {
         return {
@@ -99,7 +112,7 @@ Your response:`;
       }
 
       if (cleaned.startsWith('rejected')) {
-        const feedback = content.replace(/^rejected:?\s*/i, '').trim();
+        const feedback: string = content.replace(/^rejected:?\s*/i, '').trim();
         return {
           approved: false,
           feedback:
@@ -126,7 +139,7 @@ Your response:`;
         cleaned.includes('incorrect') ||
         cleaned.includes('wrong')
       ) {
-        const feedback = content
+        const feedback: string = content
           .replace(/^.*?(rejected|incorrect|wrong)/i, '')
           .trim();
         return {

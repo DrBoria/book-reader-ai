@@ -20,6 +20,7 @@ import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { FileUploadDto } from './dto/file-upload.dto';
 import { PDFParsingService } from '../utils/pdf-parsing.service';
+import { QueueService } from 'src/queue/queue.service';
 
 // Type for Multer file
 interface MulterFile {
@@ -39,7 +40,8 @@ export class BooksController {
   constructor(
     private readonly booksService: BooksService,
     private readonly pdfParsingService: PDFParsingService,
-  ) { }
+    private readonly queueService: QueueService,
+  ) {}
 
   @Post()
   @UsePipes(new ValidationPipe())
@@ -78,9 +80,7 @@ export class BooksController {
     description: 'Upload a book',
     type: FileUploadDto,
   })
-  async uploadFile(
-    @UploadedFile() uploadedFile: MulterFile,
-  ) {
+  async uploadFile(@UploadedFile() uploadedFile: MulterFile) {
     try {
       if (!uploadedFile) {
         throw new BadRequestException('No file uploaded');
@@ -101,11 +101,10 @@ export class BooksController {
         totalPages: metadata.pageCount,
       });
 
-      // Start processing
-      await this.booksService.processBook(
-        bookRecord.id,
-        uploadedFile.path,
-      );
+      await this.queueService.addBookProcessingJob({
+        bookId: bookRecord.id,
+        filePath: uploadedFile.path,
+      });
 
       return {
         bookId: bookRecord.id,

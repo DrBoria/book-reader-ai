@@ -4,6 +4,7 @@ import { EntityWorkflow } from '../agents/workflow.service';
 import { Category } from '../category/category.entity';
 import { Tag } from './entities/tag.entity';
 import { TaggedContent } from './entities/tagged-content.entity';
+import { fixCommonJsonIssues } from 'src/utils/json';
 
 export interface TaggingInput {
   text: string;
@@ -292,7 +293,7 @@ Your response:`;
       let jsonString = jsonMatch[0];
 
       // Try to fix common JSON issues
-      jsonString = this.fixCommonJsonIssues(jsonString);
+      jsonString = fixCommonJsonIssues(jsonString);
 
       console.log('Attempting to parse JSON:', jsonString.substring(0, 300));
 
@@ -387,45 +388,6 @@ Your response:`;
       console.log('Raw AI response:', response.substring(0, 500));
       return { tags: [], taggedContent: [] };
     }
-  }
-
-  private fixCommonJsonIssues(jsonString: string): string {
-    // Remove trailing commas
-    jsonString = jsonString.replace(/,(\s*[}\]])/g, '$1');
-
-    // Fix unterminated strings by finding unmatched quotes
-    let fixed = '';
-    let inString = false;
-    let escapeNext = false;
-
-    for (let i = 0; i < jsonString.length; i++) {
-      const char = jsonString[i];
-
-      if (escapeNext) {
-        escapeNext = false;
-        fixed += char;
-        continue;
-      }
-
-      if (char === '\\') {
-        escapeNext = true;
-        fixed += char;
-        continue;
-      }
-
-      if (char === '"') {
-        inString = !inString;
-      }
-
-      fixed += char;
-    }
-
-    // If we ended in a string, close it
-    if (inString) {
-      fixed += '"';
-    }
-
-    return fixed;
   }
 
   private fallbackEntityExtraction(

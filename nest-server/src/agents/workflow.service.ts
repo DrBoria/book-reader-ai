@@ -94,15 +94,4 @@ export class EntityWorkflow {
       },
     };
   }
-
-  generateId(): string {
-    return (
-      Math.random().toString(36).substring(2, 15) +
-      Math.random().toString(36).substring(2, 15)
-    );
-  }
-
-  getContextualGuidance(text: string, category: string): string {
-    return `Look for ${category.toLowerCase()} entities in the text based on the category definition.`;
-  }
 }

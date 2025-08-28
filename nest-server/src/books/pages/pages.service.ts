@@ -17,11 +17,12 @@ export class PagesService {
     pageNumber: number,
     text: string,
   ): Promise<Page> {
-    const page = new Page();
-    page.id = `page_${bookId}_${pageNumber}`;
-    page.bookId = bookId;
-    page.pageNumber = pageNumber;
-    page.text = text;
+    const page = await this.pageRepository.create({
+      id: `page_${bookId}_${pageNumber}`,
+      bookId,
+      pageNumber,
+      text,
+    });
 
     return await this.pageRepository.save(page);
   }

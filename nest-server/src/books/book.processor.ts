@@ -10,13 +10,11 @@ import { TagsService } from '../tags/tags.service';
 import { CategoriesService } from '../category/categories.service';
 import { TaggedContentService } from '../tags/tagged-content.service';
 import { WebSocketService } from '../websocket/websocket.service';
-import { Neo4jService } from '../database/neo4j.service';
 
 @Processor('book-processing')
 export class BookProcessor extends WorkerHost {
   constructor(
     private readonly booksService: BooksService,
-    private readonly neo4jService: Neo4jService,
     private readonly pdfParsingService: PDFParsingService,
     private readonly aiTaggingService: AITaggingService,
     private readonly pagesService: PagesService,

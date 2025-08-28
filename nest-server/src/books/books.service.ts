@@ -4,7 +4,6 @@ import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { Neo4jService } from '../database/neo4j.service';
 import { Book, BookStatus } from './entities/book.entity';
-import { QueueService } from '../queue/queue.service';
 import { Page } from './pages/entities/page.entity';
 import { Tag } from '../tags/entities/tag.entity';
 import * as crypto from 'crypto';
@@ -15,7 +14,6 @@ export class BooksService {
 
   constructor(
     private readonly neo4jService: Neo4jService,
-    private readonly queueService: QueueService,
   ) {
     this.bookRepository = this.neo4jService.getNeoGM().getRepository(Book);
   }
@@ -29,14 +27,6 @@ export class BooksService {
     });
     return await this.bookRepository.save(book);
   }
-
-  async processBook(bookId: string, filePath: string): Promise<void> {
-    await this.queueService.addBookProcessingJob({
-      bookId,
-      filePath,
-    });
-  }
-
   async findAll(): Promise<Book[]> {
     return await this.bookRepository.find();
   }
@@ -57,7 +47,16 @@ export class BooksService {
     const book = await this.findOne(id);
     if (!book) return null;
 
-    await this.bookRepository.delete(book);
+    const neogm = this.neo4jService.getNeoGM();
+    await neogm.rawQuery().execute(
+      `
+          MATCH (book:Book {id: $bookId})
+          OPTIONAL MATCH (book)<-[:BELONGS_TO]-(page:Page)
+          OPTIONAL MATCH (book)<-[:BELONGS_TO]-(tag:Tag)
+          OPTIONAL MATCH (page)<-[:TAGGED_ON]-(taggedContent:TaggedContent)
+          OPTIONAL MATCH (tag)<-[:HAS_TAG]-(taggedContent2:TaggedContent)
+          DETACH DELETE book, page, tag, taggedContent, taggedContent2
+        `, { bookId: book.id });
     return book;
   }
 
@@ -73,10 +72,4 @@ export class BooksService {
     return await tagRepository.find({ where: { bookId } });
   }
 
-  async deleteBookAndRelatedData(bookId: string): Promise<void> {
-    const book = await this.bookRepository.findOne({ id: bookId });
-    if (book) {
-      await this.bookRepository.delete(book);
-    }
-  }
 }
