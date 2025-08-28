@@ -19,7 +19,7 @@ import { BooksService } from './books.service';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { FileUploadDto } from './dto/file-upload.dto';
-import { PDFParsingService } from './pdf-parsing.service';
+import { PDFParsingService } from '../utils/pdf-parsing.service';
 
 // Type for Multer file
 interface MulterFile {
@@ -39,7 +39,7 @@ export class BooksController {
   constructor(
     private readonly booksService: BooksService,
     private readonly pdfParsingService: PDFParsingService,
-  ) {}
+  ) { }
 
   @Post()
   @UsePipes(new ValidationPipe())
@@ -80,20 +80,18 @@ export class BooksController {
   })
   async uploadFile(
     @UploadedFile() uploadedFile: MulterFile,
-    @Query('tags') tagsQuery?: string,
   ) {
     try {
       if (!uploadedFile) {
         throw new BadRequestException('No file uploaded');
       }
 
-      const tags = tagsQuery
-        ? tagsQuery.split(',').map((tag) => tag.trim())
-        : [];
+      const metadata = await this.pdfParsingService.getMetadata(
+        uploadedFile.path,
+      );
 
-      const metadata = await this.pdfParsingService.getMetadata(uploadedFile.path);
-
-      const createBookDto: CreateBookDto = {
+      // Create book record
+      const bookRecord = await this.booksService.create({
         title: metadata.title || uploadedFile.originalname,
         filename: uploadedFile.originalname,
         author: metadata.author || 'Unknown Author',
@@ -101,16 +99,12 @@ export class BooksController {
         size: uploadedFile.size,
         filePath: uploadedFile.path,
         totalPages: metadata.pageCount,
-      };
-
-      // Create book record
-      const bookRecord = await this.booksService.create(createBookDto);
+      });
 
       // Start processing
       await this.booksService.processBook(
         bookRecord.id,
         uploadedFile.path,
-        tags,
       );
 
       return {
@@ -124,7 +118,8 @@ export class BooksController {
         },
       };
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      const errorMessage =
+        error instanceof Error ? error.message : 'Unknown error occurred';
       throw new BadRequestException(`Failed to upload book: ${errorMessage}`);
     }
   }

@@ -15,14 +15,14 @@ export class PDFParsingService {
       const dataBuffer = fs.readFileSync(filePath);
       const data = await pdf(dataBuffer);
 
-      // Split text by pages (approximate)
       const pages = this.splitTextIntoPages(data.text, data.numpages);
 
-      return pages.map((text, index) => ({
-        pageNumber: index + 1,
-        text: text.trim()
-      })).filter(page => page.text.length > 0);
-
+      return pages
+        .map((text, index) => ({
+          pageNumber: index + 1,
+          text: text.trim(),
+        }))
+        .filter((page) => page.text.length > 0);
     } catch (error) {
       console.error('PDF parsing failed:', error);
       throw new Error('Failed to parse PDF file');
@@ -30,7 +30,6 @@ export class PDFParsingService {
   }
 
   private splitTextIntoPages(fullText: string, numPages: number): string[] {
-    // Simple approach: split text into approximately equal chunks
     const lines = fullText.split('\n');
     const linesPerPage = Math.ceil(lines.length / numPages);
 
@@ -42,7 +41,7 @@ export class PDFParsingService {
       pages.push(pageText);
     }
 
-    return pages.filter(page => page.trim().length > 0);
+    return pages.filter((page) => page.trim().length > 0);
   }
 
   async getMetadata(filePath: string): Promise<{
@@ -57,13 +56,13 @@ export class PDFParsingService {
       return {
         title: data.info?.Title || path.basename(filePath, '.pdf'),
         author: data.info?.Author,
-        pageCount: data.numpages
+        pageCount: data.numpages,
       };
     } catch (error) {
       console.error('PDF metadata extraction failed:', error);
       return {
         title: path.basename(filePath, '.pdf'),
-        pageCount: 0
+        pageCount: 0,
       };
     }
   }

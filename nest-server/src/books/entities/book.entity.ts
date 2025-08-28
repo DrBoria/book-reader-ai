@@ -4,7 +4,7 @@ export enum BookStatus {
   PENDING = 'pending',
   PROCESSING = 'processing',
   COMPLETED = 'completed',
-  ERROR = 'error'
+  ERROR = 'error',
 }
 
 @Node('Book')
@@ -32,7 +32,7 @@ export class Book extends BaseEntity {
 
   @Property({
     type: 'string',
-    required: true
+    required: true,
   })
   status: BookStatus = BookStatus.PENDING;
 

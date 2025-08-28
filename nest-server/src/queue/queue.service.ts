@@ -6,14 +6,13 @@ import { ProcessingJob } from '../types';
 export interface BookProcessingJobData {
   bookId: string;
   filePath: string;
-  tags: string[];
 }
 
 @Injectable()
 export class QueueService {
   constructor(
     @InjectQueue('book-processing')
-    private readonly bookProcessingQueue: Queue<BookProcessingJobData>
+    private readonly bookProcessingQueue: Queue<BookProcessingJobData>,
   ) {}
 
   async addBookProcessingJob(data: BookProcessingJobData) {

@@ -1,5 +1,5 @@
 import neo4j, { Driver, Session } from 'neo4j-driver';
-import { config } from '.';
+import { config } from './config';
 
 export class Neo4jDatabase {
   private driver: Driver;
@@ -7,7 +7,7 @@ export class Neo4jDatabase {
   constructor() {
     this.driver = neo4j.driver(
       config.neo4j.uri,
-      neo4j.auth.basic(config.neo4j.user, config.neo4j.password)
+      neo4j.auth.basic(config.neo4j.user, config.neo4j.password),
     );
   }
 

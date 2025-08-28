@@ -797,14 +797,6 @@ Your response:`;
     return finalScore;
   }
 
-  private extractKeywordsFromDescription(description: string): string[] {
-    // Extract meaningful words from category description  
-    return description
-      .toLowerCase()
-      .split(/\s+/)
-      .filter(word => word.length > 2);
-  }
-
   private extractRelevantFragment(text: string, keyword: string): string {
     const index = text.toLowerCase().indexOf(keyword.toLowerCase());
     if (index === -1) return text.substring(0, 200);

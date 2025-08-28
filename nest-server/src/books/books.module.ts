@@ -2,10 +2,22 @@ import { Module } from '@nestjs/common';
 import { BooksService } from './books.service';
 import { BooksController } from './books.controller';
 import { QueueModule } from 'src/queue/queue.module';
-import { PDFParsingService } from './pdf-parsing.service';
+import { PDFParsingService } from '../utils/pdf-parsing.service';
+import { AITaggingService } from '../tags/ai-tagging.service';
+import { BookProcessor } from './book.processor';
+import { WebSocketService } from '../websocket/websocket.service';
 import { MulterModule } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
+import { HttpModule } from '@nestjs/axios';
+import { PagesService } from './pages/pages.service';
+import { TagsService } from '../tags/tags.service';
+import { CategoriesService } from '../category/categories.service';
+import { TaggedContentService } from '../tags/tagged-content.service';
+import { EntityWriter } from '../agents/writer.service';
+import { EntityReviewer } from '../agents/reviewer.service';
+import { EntityWorkflow } from '../agents/workflow.service';
+import { Neo4jService } from '../database/neo4j.service';
 
 @Module({
   imports: [
@@ -20,11 +32,13 @@ import { extname } from 'path';
         },
       },
     }),
+    HttpModule,
     MulterModule.register({
       storage: diskStorage({
         destination: './uploads',
         filename: (req, file, callback) => {
-          const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+          const uniqueSuffix =
+            Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
           callback(null, `${uniqueSuffix}${ext}`);
         },
@@ -42,6 +56,20 @@ import { extname } from 'path';
     }),
   ],
   controllers: [BooksController],
-  providers: [BooksService, PDFParsingService],
+  providers: [
+    BooksService,
+    PDFParsingService,
+    AITaggingService,
+    BookProcessor,
+    WebSocketService,
+    PagesService,
+    TagsService,
+    CategoriesService,
+    TaggedContentService,
+    EntityWriter,
+    EntityReviewer,
+    EntityWorkflow,
+    Neo4jService,
+  ],
 })
 export class BooksModule {}

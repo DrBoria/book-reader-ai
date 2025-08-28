@@ -1,11 +1,12 @@
 import { Injectable } from '@nestjs/common';
+import { Repository } from 'neogm';
 import { CreateBookDto } from './dto/create-book.dto';
 import { UpdateBookDto } from './dto/update-book.dto';
 import { Neo4jService } from '../database/neo4j.service';
 import { Book, BookStatus } from './entities/book.entity';
 import { QueueService } from '../queue/queue.service';
-
-import { Repository } from 'neogm';
+import { Page } from './pages/entities/page.entity';
+import { Tag } from '../tags/entities/tag.entity';
 import * as crypto from 'crypto';
 
 @Injectable()
@@ -14,10 +15,9 @@ export class BooksService {
 
   constructor(
     private readonly neo4jService: Neo4jService,
-    private readonly queueService: QueueService
+    private readonly queueService: QueueService,
   ) {
-    const neogm = this.neo4jService.getNeoGM();
-    this.bookRepository = neogm.getRepository(Book);
+    this.bookRepository = this.neo4jService.getNeoGM().getRepository(Book);
   }
 
   async create(createBookDto: CreateBookDto): Promise<Book> {
@@ -30,21 +30,15 @@ export class BooksService {
     return await this.bookRepository.save(book);
   }
 
-  async processBook(
-    bookId: string,
-    filePath: string,
-    tags: string[] = []
-  ): Promise<void> {
+  async processBook(bookId: string, filePath: string): Promise<void> {
     await this.queueService.addBookProcessingJob({
       bookId,
       filePath,
-      tags,
     });
   }
 
   async findAll(): Promise<Book[]> {
-    const allBooks = await this.bookRepository.find({ orderBy: 'uploadedAt DESC' });
-    return allBooks;
+    return await this.bookRepository.find();
   }
 
   async findOne(id: string): Promise<Book | null> {
@@ -56,7 +50,7 @@ export class BooksService {
     if (!book) return null;
 
     Object.assign(book, updateBookDto);
-    return this.bookRepository.save(book);
+    return await this.bookRepository.save(book);
   }
 
   async remove(id: string): Promise<Book | null> {
@@ -65,5 +59,24 @@ export class BooksService {
 
     await this.bookRepository.delete(book);
     return book;
+  }
+
+  async getBookPages(bookId: string): Promise<any[]> {
+    const neogm = this.neo4jService.getNeoGM();
+    const pageRepository = neogm.getRepository(Page);
+    return await pageRepository.find({ where: { bookId } });
+  }
+
+  async getBookTags(bookId: string): Promise<any[]> {
+    const neogm = this.neo4jService.getNeoGM();
+    const tagRepository = neogm.getRepository(Tag);
+    return await tagRepository.find({ where: { bookId } });
+  }
+
+  async deleteBookAndRelatedData(bookId: string): Promise<void> {
+    const book = await this.bookRepository.findOne({ id: bookId });
+    if (book) {
+      await this.bookRepository.delete(book);
+    }
   }
 }
