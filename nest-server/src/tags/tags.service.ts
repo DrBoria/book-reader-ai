@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Repository } from 'neogm';
 import { Tag } from './entities/tag.entity';
 import { Neo4jService } from '../database/neo4j.service';
+import { CreateTagDto } from './dto/create-tag.dto';
 
 @Injectable()
 export class TagsService {
@@ -12,14 +13,7 @@ export class TagsService {
     this.tagRepository = neogm.getRepository(Tag);
   }
 
-  async createTag(data: {
-    name: string;
-    value?: string;
-    bookId: string;
-    categoryId: string;
-    type?: string;
-    confidence?: number;
-  }): Promise<Tag> {
+  async create(data: CreateTagDto): Promise<Tag> {
     const tag = new Tag();
     tag.id = `tag_${data.bookId}_${data.name}_${Date.now()}`;
     tag.name = data.name;
@@ -32,6 +26,10 @@ export class TagsService {
 
     const neoGM = this.neo4jService.getNeoGM();
     return await neoGM.getRepository(Tag).save(tag);
+  }
+
+  async findAll(): Promise<Tag[]> {
+    return await this.tagRepository.find();
   }
 
   async findByCategory(categoryId: string): Promise<Tag[]> {
@@ -50,18 +48,11 @@ export class TagsService {
     }
   }
 
-  async getOrCreateTag(data: {
-    name: string;
-    value?: string;
-    bookId: string;
-    categoryId: string;
-    type?: string;
-    confidence?: number;
-  }): Promise<Tag> {
+  async getOrCreateTag(data: CreateTagDto): Promise<Tag> {
     let tag = await this.findByNameAndBook(data.name, data.bookId);
 
     if (!tag) {
-      tag = await this.createTag(data);
+      tag = await this.create(data);
     }
 
     return tag;

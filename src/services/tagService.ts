@@ -37,7 +37,7 @@ export class TagService {
   }
 
   async createCategory(category: { name: string; description?: string; color?: string; dataType?: string }): Promise<TagCategory | null> {
-    const response = await apiClient.post<TagCategory>('/tags/categories', category);
+    const response = await apiClient.post<TagCategory>('/category', category);
     
     if (response.error) {
       console.error('Failed to create category:', response.error);
@@ -81,7 +81,7 @@ export class TagService {
 
   async updateCategoryKeywords(categoryId: string, keywords: string[]): Promise<TagCategory | null> {
     try {
-      const response = await apiClient.put<TagCategory>(`/tags/categories/${categoryId}/keywords`, { keywords });
+      const response = await apiClient.put<TagCategory>(`/category/${categoryId}/keywords`, { keywords });
       
       if (response.error) {
         console.error('Failed to update category keywords:', response.error);
@@ -112,7 +112,7 @@ export class TagService {
   }
 
   async deleteCategory(categoryId: string): Promise<void> {
-    const response = await apiClient.delete(`/tags/categories/${categoryId}`);
+    const response = await apiClient.delete(`/category/${categoryId}`);
     
     if (response.error) {
       console.error('Failed to delete category:', response.error);

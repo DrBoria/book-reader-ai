@@ -102,7 +102,7 @@ export class BookProcessor extends WorkerHost {
               const tagValue = (tagData as any).value;
               const tagConfidence = (tagData as any).confidence;
 
-              const tag = await this.tagsService.createTag({
+              const tag = await this.tagsService.create({
                 name: tagName,
                 value: tagValue,
                 categoryId: category.id,

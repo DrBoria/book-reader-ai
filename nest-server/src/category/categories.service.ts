@@ -12,7 +12,7 @@ export class CategoriesService {
     this.categoryRepository = neogm.getRepository(Category);
   }
 
-  async createCategory(data: {
+  async create(data: {
     name: string;
     description?: string;
     color?: string;
@@ -20,14 +20,15 @@ export class CategoriesService {
     keywords?: string[];
     type?: string;
   }): Promise<Category> {
-    const category = new Category();
-    category.id = `category_${data.name.toLowerCase().replace(/\s+/g, '_')}`;
-    category.name = data.name;
-    category.description = data.description;
-    category.color = data.color;
-    category.dataType = data.dataType;
-    category.keywords = data.keywords;
-    category.type = data.type || 'custom';
+    const category = await this.categoryRepository.create({
+      id: `category_${data.name.toLowerCase().replace(/\s+/g, '_')}`,
+      name: data.name,
+      description: data.description,
+      color: data.color,
+      dataType: data.dataType,
+      keywords: data.keywords,
+      type: data.type || 'custom',
+    });
 
     return await this.categoryRepository.save(category);
   }
@@ -108,7 +109,7 @@ export class CategoriesService {
     for (const catData of defaultCategories) {
       let category = await this.findByName(catData.name);
       if (!category) {
-        category = await this.createCategory(catData);
+        category = await this.create(catData);
       }
       categories.push(category);
     }

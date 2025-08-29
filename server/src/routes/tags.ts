@@ -39,7 +39,7 @@ router.get('/', async (req, res) => {
 });
 
 // Get all categories
-router.get('/categories', async (req, res) => {
+router.get('/category', async (req, res) => {
   try {
     const categories = await tagRepo.getAllCategories();
     res.json(categories);
@@ -149,7 +149,7 @@ router.delete('/', async (req, res) => {
 });
 
 // Create category
-router.post('/categories', async (req, res) => {
+router.post('/category', async (req, res) => {
   try {
     const { name, description, color, dataType } = req.body;
     
@@ -172,7 +172,7 @@ router.post('/categories', async (req, res) => {
 });
 
 // Update category keywords
-router.put('/categories/:categoryId/keywords', async (req, res) => {
+router.put('/category/:categoryId/keywords', async (req, res) => {
   try {
     const { categoryId } = req.params;
     const { keywords } = req.body;
@@ -209,7 +209,7 @@ router.post('/cleanup-duplicates', async (req, res) => {
 });
 
 // Delete category
-router.delete('/categories/:categoryId', async (req, res) => {
+router.delete('/category/:categoryId', async (req, res) => {
   try {
     const { categoryId } = req.params;
     
