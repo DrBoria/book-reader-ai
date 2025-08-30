@@ -53,15 +53,14 @@ export const BookUploadPage: React.FC = observer(() => {
       const response = await fetch('/api/books/upload', {
         method: 'POST',
         body: formData,
-        onUploadProgress: (progressEvent) => {
-          const progress = progressEvent.total 
-            ? Math.round((progressEvent.loaded * 100) / progressEvent.total)
-            : 0;
-          
-          setUploads(prev => prev.map((upload, i) => 
-            i === index ? { ...upload, progress } : upload
-          ));
-        },
+        onUploadProgress: (progressEvent: { loaded: number; total: number }) => {
+            const progress = Math.round(
+              (progressEvent.loaded * 100) / progressEvent.total
+            );
+            setUploads(prev => prev.map((upload, i) => 
+              i === index ? { ...upload, progress } : upload
+            ));
+          },
       } as any);
 
       if (!response.ok) {
@@ -76,17 +75,8 @@ export const BookUploadPage: React.FC = observer(() => {
           : upload
       ));
 
-      // Add the new book to the store
-      bookStore.addBook({
-        id: result.bookId,
-        title: file.name.replace('.pdf', ''),
-        author: 'Unknown',
-        filename: file.name,
-        status: 'pending',
-        totalPages: 0,
-        uploadedAt: new Date().toISOString(),
-        pages: [],
-      });
+      // Reload books to get the newly uploaded book
+      await bookStore.loadBooks();
 
     } catch (error) {
       setUploads(prev => prev.map((upload, i) => 

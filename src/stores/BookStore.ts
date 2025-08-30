@@ -1,5 +1,20 @@
 import { types, Instance, flow } from 'mobx-state-tree';
-import { booksService } from '../services/api';
+import { bookService } from '../services/bookService';
+import { BookContent } from '../types';
+
+const mapApiBookToMstBook = (apiBook: BookContent) => ({
+  id: apiBook.id || '',
+  title: apiBook.title || 'Untitled',
+  author: apiBook.author || 'Unknown',
+  filePath: '',
+  coverImage: undefined,
+  createdAt: new Date(apiBook.uploadedAt || Date.now()),
+  updatedAt: new Date(apiBook.uploadedAt || Date.now()),
+  totalPages: apiBook.pages?.length || 0,
+  currentPage: 0,
+  pages: apiBook.pages || [],
+  uploadedAt: new Date(apiBook.uploadedAt || Date.now()),
+});
 
 export const Book = types.model('Book', {
   id: types.string,
@@ -26,16 +41,16 @@ export const BookStore = types
     isLoading: types.boolean,
   })
   .actions((self) => ({
-    setBooks(books: any[]) {
+    setBooks(books: Instance<typeof Book>[]) {
       self.books.replace(books);
     },
-    setCurrentBook(book: any) {
+    setCurrentBook(book: Instance<typeof Book> | undefined) {
       self.currentBook = book;
     },
     setLoading(loading: boolean) {
       self.isLoading = loading;
     },
-    addBook(book: any) {
+    addBook(book: Instance<typeof Book>) {
       self.books.push(book);
     },
     updateBook(id: string, updates: Partial<Instance<typeof Book>>) {
@@ -54,8 +69,9 @@ export const BookStore = types
     loadBooks: flow(function* () {
       self.setLoading(true);
       try {
-        const books = yield booksService.getBooks();
-        self.setBooks(books);
+        const apiBooks: BookContent[] = yield bookService.getAllBooks();
+        const mstBooks = apiBooks.map(mapApiBookToMstBook);
+        self.setBooks(mstBooks);
       } catch (error) {
         console.error('Failed to load books:', error);
       } finally {
@@ -66,8 +82,11 @@ export const BookStore = types
     loadBook: flow(function* (id: string) {
       self.setLoading(true);
       try {
-        const book = yield booksService.getBook(id);
-        self.setCurrentBook(book);
+        const apiBook: BookContent | null = yield bookService.getBook(id);
+        if (apiBook) {
+          const mstBook = mapApiBookToMstBook(apiBook);
+          self.setCurrentBook(mstBook);
+        }
       } catch (error) {
         console.error('Failed to load book:', error);
       } finally {
@@ -75,26 +94,26 @@ export const BookStore = types
       }
     }),
 
-    createBook: flow(function* (book: any) {
-      try {
-        const newBook = yield booksService.createBook(book);
-        self.addBook(newBook);
-        return newBook;
-      } catch (error) {
-        console.error('Failed to create book:', error);
-        throw error;
-      }
-    }),
-
     removeBook: flow(function* (id: string) {
       try {
-        yield booksService.deleteBook(id);
+        yield bookService.deleteBook(id);
         self.deleteBook(id);
       } catch (error) {
         console.error('Failed to delete book:', error);
         throw error;
       }
     })
-  }))
+  })).actions((self) => ({
+    createBook: flow(function* () {
+      try {
+        yield self.loadBooks();
+        const latestBook = self.books[self.books.length - 1];
+        return latestBook;
+      } catch (error) {
+        console.error('Failed to create book:', error);
+        throw error;
+      }
+    }),
+  }));
 
 export type BookStoreType = Instance<typeof BookStore>;

@@ -38,11 +38,11 @@ export class CategoriesService {
   }
 
   async findById(id: string): Promise<Category | null> {
-    return await this.categoryRepository.findOne({ where: { id } });
+    return await this.categoryRepository.findOne({ id });
   }
 
   async findByName(name: string): Promise<Category | null> {
-    return await this.categoryRepository.findOne({ where: { name } });
+    return await this.categoryRepository.findOne({  name });
   }
 
   async getDefaultCategories(): Promise<Category[]> {

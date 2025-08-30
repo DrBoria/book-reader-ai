@@ -111,17 +111,22 @@ export interface CreateBookDto {
 
 export interface Tag {
   id: string;
-  name: string;
+  label?: string;
+  name?: string;
   description?: string;
   color?: string;
-  bookId: string;
-  value: string;
-  confidence: number;
-  contentCount: number;
-  relevance: number;
+  type: 'dynamic' | 'default' | 'entity' | 'concept' | 'keyword' | 'custom';
+  bookId?: string;
+  categoryId?: string;
+  value?: string;
+  confidence?: number;
+  contentCount?: number;
+  keywords?: string[];
+  createdAt: string | { year: { low: number; high: number }; month: { low: number; high: number }; day: { low: number; high: number }; hour: { low: number; high: number }; minute: { low: number; high: number }; second: { low: number; high: number }; nanosecond: { low: number; high: number }; timeZoneOffsetSeconds: { low: number; high: number } };
+  updatedAt: string;
+  relevance?: number;
   context?: string;
   originalText?: string;
-  type?: 'entity' | 'concept' | 'keyword' | 'custom';
 }
 
 export interface CreateTagDto {
@@ -138,14 +143,27 @@ export interface CreateTagDto {
   type?: 'entity' | 'concept' | 'keyword' | 'custom';
 }
 
+export interface TaggedContent {
+  id: string;
+  bookId: string;
+  tagId: string;
+  content: string;
+  pageNumber: number;
+  position: number;
+  relevance: number;
+  context?: string;
+  originalText: string;
+  createdAt: string;
+}
+
 export interface Category {
   id: string;
   name: string;
   description?: string;
   color?: string;
-  dataType?: 'text' | 'date' | 'number';
+  dataType?: 'text' | 'date' | 'number' | 'string';
   keywords?: string[];
-  type?: 'default' | 'custom';
+  type?: 'default' | 'custom' | 'system';
   createdAt: string;
   updatedAt: string;
   tags?: string[];
@@ -155,9 +173,9 @@ export interface CreateCategoryDto {
   name: string;
   description?: string;
   color?: string;
-  dataType?: 'text' | 'date' | 'number';
+  dataType?: 'text' | 'date' | 'number' | 'string';
   keywords?: string[];
-  type?: 'default' | 'custom';
+  type?: 'default' | 'custom' | 'system';
 }
 
 export class BooksService {

@@ -8,7 +8,8 @@ export class TagsController {
 
     @Get()
     async getAll() {
-        return this.tagService.findAll();
+        const all = await this.tagService.findAll()
+        return all;
     }
 
     @Post()
