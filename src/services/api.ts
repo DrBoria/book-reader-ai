@@ -1,3 +1,11 @@
+declare global {
+  interface ImportMeta {
+    env: {
+      VITE_API_BASE_URL?: string;
+    };
+  }
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
 
 export interface ApiResponse<T> {
@@ -74,4 +82,181 @@ class ApiClient {
   }
 }
 
+export interface Book {
+  id: string;
+  title: string;
+  author: string;
+  filename: string;
+  totalPages?: number;
+  uploadedAt: string;
+  processedAt?: string;
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  filePath?: string;
+  size?: number;
+  mimetype?: string;
+}
+
+export interface CreateBookDto {
+  title: string;
+  author?: string;
+  filename: string;
+  totalPages?: number;
+  filePath?: string;
+  size?: number;
+  status?: 'pending' | 'processing' | 'completed' | 'error';
+  processedAt?: string;
+  uploadedAt?: string;
+  mimetype?: string;
+}
+
+export interface Tag {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  bookId: string;
+  value: string;
+  confidence: number;
+  contentCount: number;
+  relevance: number;
+  context?: string;
+  originalText?: string;
+  type?: 'entity' | 'concept' | 'keyword' | 'custom';
+}
+
+export interface CreateTagDto {
+  name: string;
+  description?: string;
+  color?: string;
+  bookId: string;
+  value: string;
+  confidence: number;
+  contentCount: number;
+  relevance: number;
+  context?: string;
+  originalText?: string;
+  type?: 'entity' | 'concept' | 'keyword' | 'custom';
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  description?: string;
+  color?: string;
+  dataType?: 'text' | 'date' | 'number';
+  keywords?: string[];
+  type?: 'default' | 'custom';
+  createdAt: string;
+  updatedAt: string;
+  tags?: string[];
+}
+
+export interface CreateCategoryDto {
+  name: string;
+  description?: string;
+  color?: string;
+  dataType?: 'text' | 'date' | 'number';
+  keywords?: string[];
+  type?: 'default' | 'custom';
+}
+
+export class BooksService {
+  constructor(private client: ApiClient) {}
+
+  async getBooks(): Promise<Book[]> {
+    const response = await this.client.get<Book[]>('/books');
+    if (response.error) throw new Error(response.error);
+    return response.data || [];
+  }
+
+  async getBook(id: string): Promise<Book> {
+    const response = await this.client.get<Book>(`/books/${id}`);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async createBook(book: CreateBookDto): Promise<Book> {
+    const response = await this.client.post<Book>('/books', book);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async updateBook(id: string, updates: Partial<CreateBookDto>): Promise<Book> {
+    const response = await this.client.post<Book>(`/books/${id}`, updates);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async deleteBook(id: string): Promise<void> {
+    const response = await this.client.delete<void>(`/books/${id}`);
+    if (response.error) throw new Error(response.error);
+  }
+
+  async uploadBook(file: File): Promise<{ bookId: string; message: string }> {
+    const formData = new FormData();
+    formData.append('book', file);
+    
+    const response = await this.client.postFormData<{ bookId: string; message: string }>('/books/upload', formData);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+}
+
+export class TagsService {
+  constructor(private client: ApiClient) {}
+
+  async getTags(): Promise<Tag[]> {
+    const response = await this.client.get<Tag[]>('/tags');
+    if (response.error) throw new Error(response.error);
+    return response.data || [];
+  }
+
+  async createTag(tag: CreateTagDto): Promise<Tag> {
+    const response = await this.client.post<Tag>('/tags', tag);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async deleteTag(id: string): Promise<void> {
+    const response = await this.client.delete<void>(`/tags/${id}`);
+    if (response.error) throw new Error(response.error);
+  }
+
+  async getTaggedContent(): Promise<any[]> {
+    const response = await this.client.get<any[]>('/tags/content');
+    if (response.error) throw new Error(response.error);
+    return response.data || [];
+  }
+
+  async tagContent(data: { bookId: string; tagId: string; content: string; pageNumber: number; position: number; relevance: number; context?: string; originalText: string }): Promise<any> {
+    const response = await this.client.post<any>('/tags/content', data);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+}
+
+export class CategoriesService {
+  constructor(private client: ApiClient) {}
+
+  async getCategories(): Promise<Category[]> {
+    const response = await this.client.get<Category[]>('/category');
+    if (response.error) throw new Error(response.error);
+    return response.data || [];
+  }
+
+  async createCategory(category: CreateCategoryDto): Promise<Category> {
+    const response = await this.client.post<Category>('/category', category);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async deleteCategory(id: string): Promise<void> {
+    const response = await this.client.delete<void>(`/category/${id}`);
+    if (response.error) throw new Error(response.error);
+  }
+}
+
 export const apiClient = new ApiClient(API_BASE_URL);
+export const booksService = new BooksService(apiClient);
+export const tagsService = new TagsService(apiClient);
+export const categoriesService = new CategoriesService(apiClient);

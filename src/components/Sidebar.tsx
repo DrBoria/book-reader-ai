@@ -1,49 +1,32 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
+import { NavLink, useLocation } from 'react-router-dom';
 import { Book, Tag, MessageSquare, Upload, Settings, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useStore } from '../stores';
 
-export type ActiveView = 'books' | 'tags' | 'chat' | 'upload' | 'settings';
+interface SidebarProps {}
 
-interface SidebarProps {
-  activeView: ActiveView;
-  onViewChange: (view: ActiveView) => void;
-  bookCount: number;
-  tagCount: number;
-  onWidthChange?: (width: number) => void;
-}
-
-export const Sidebar: React.FC<SidebarProps> = ({
-  activeView,
-  onViewChange,
-  bookCount,
-  tagCount,
-  onWidthChange
-}) => {
+export const Sidebar: React.FC<SidebarProps> = () => {
   const [isExpanded, setIsExpanded] = useState(true);
-  
+  const { bookStore, tagStore } = useStore();
+
   const menuItems = [
-    { id: 'books' as ActiveView, label: 'Books', icon: Book, count: bookCount },
-    { id: 'tags' as ActiveView, label: 'Tags', icon: Tag, count: tagCount },
-    { id: 'chat' as ActiveView, label: 'Chat', icon: MessageSquare },
-    { id: 'upload' as ActiveView, label: 'Upload', icon: Upload },
-    { id: 'settings' as ActiveView, label: 'Settings', icon: Settings },
+    { id: 'books', path: '/books', label: 'Books', icon: Book },
+    { id: 'tags', path: '/tags', label: 'Tags', icon: Tag },
+    { id: 'chat', path: '/chat', label: 'Chat', icon: MessageSquare },
+    { id: 'upload', path: '/upload', label: 'Upload', icon: Upload },
+    { id: 'settings', path: '/settings', label: 'Settings', icon: Settings },
   ];
 
   const toggleSidebar = () => {
-    const newExpanded = !isExpanded;
-    setIsExpanded(newExpanded);
-    if (onWidthChange) {
-      onWidthChange(newExpanded ? 256 : 64);
-    }
+    setIsExpanded(!isExpanded);
   };
 
-  useEffect(() => {
-    if (onWidthChange) {
-      onWidthChange(isExpanded ? 256 : 64);
-    }
-  }, [isExpanded, onWidthChange]);
-
   return (
-    <div className={`bg-white shadow-lg h-screen flex flex-col fixed left-0 top-0 $${isExpanded ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out`}>
+    <div 
+      className={`bg-white shadow-lg h-screen flex flex-col left-0 top-0 transition-all duration-300 ease-in-out ${
+        isExpanded ? 'w-64' : 'w-16'
+      }`}
+    >
       <div className="p-4 border-b">
         <div className="flex items-center justify-between">
           {isExpanded && (
@@ -64,31 +47,36 @@ export const Sidebar: React.FC<SidebarProps> = ({
       
       <nav className="flex-1 p-4 overflow-hidden">
         <ul className="space-y-2">
-          {menuItems.map(({ id, label, icon: Icon, count }) => (
-            <li key={id}>
-              <button
-                onClick={() => onViewChange(id)}
-                className={`w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
-                  activeView === id
-                    ? 'bg-blue-50 text-blue-600'
-                    : 'text-gray-700 hover:bg-gray-100'
-                } ${
-                  !isExpanded && 'justify-center'
-                }`}
+          {menuItems.map(({ path, label, icon: Icon }) => (
+            <li key={path}>
+              <NavLink
+                to={path}
+                className={({ isActive }) =>
+                  `w-full flex items-center justify-between px-3 py-2 rounded-lg transition-colors ${
+                    isActive
+                      ? 'bg-blue-50 text-blue-600'
+                      : 'text-gray-700 hover:bg-gray-100'
+                  } ${
+                    !isExpanded && 'justify-center'
+                  }`
+                }
                 title={label}
               >
-                <div className={`flex items-center ${
-                  isExpanded ? 'space-x-3' : ''
-                }`}>
+                <div className={`flex items-center ${isExpanded ? 'space-x-3' : ''}`}>
                   <Icon className="w-5 h-5 flex-shrink-0" />
                   {isExpanded && <span className="font-medium">{label}</span>}
                 </div>
-                {isExpanded && count !== undefined && count > 0 && (
+                {isExpanded && label === 'Books' && bookStore.books.length > 0 && (
                   <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
-                    {count}
+                    {bookStore.books.length}
                   </span>
                 )}
-              </button>
+                {isExpanded && label === 'Tags' && tagStore.tags.length > 0 && (
+                  <span className="bg-gray-200 text-gray-700 px-2 py-1 rounded-full text-xs font-medium">
+                    {tagStore.tags.length}
+                  </span>
+                )}
+              </NavLink>
             </li>
           ))}
         </ul>
