@@ -1,27 +1,19 @@
 import React, { useState } from "react";
-import { BookContent, TaggedContent, Tag } from "../types";
-import { BookOpen, FileText, Quote, Star } from "lucide-react";
+import { observer } from "mobx-react-lite";
+import { TaggedContent as TaggedContentType, Tag } from "../types";
+import { FileText, Quote, Star } from "lucide-react";
 
-interface ContentDisplayProps {
-  book: BookContent | null;
+interface TaggedContentProps {
+  taggedContent: TaggedContentType[];
   selectedTag: string | null;
-  taggedContent: TaggedContent[];
   tags?: Tag[];
-  isProcessing?: boolean;
-  processingProgress?: number;
 }
 
-export const ContentDisplay: React.FC<ContentDisplayProps> = ({
-  book,
-  selectedTag,
-  taggedContent,
-  tags = [],
-  isProcessing = false,
-  processingProgress = 0
-}) => {
+export const TaggedContentDisplay: React.FC<TaggedContentProps> = observer(({ taggedContent, selectedTag, tags }) => {
+  const allTags = tags || [];
   const [sortBy, setSortBy] = useState<"page" | "relevance">("page");
-
-  const selectedTagInfo = tags.find(tag => tag.id === selectedTag);
+  
+  const selectedTagInfo = allTags.find(tag => tag.id === selectedTag);
 
   const sortedContent = [...taggedContent].sort((a, b) => {
     if (sortBy === "page") {
@@ -30,70 +22,17 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
     return b.relevance - a.relevance;
   });
 
-  const renderBookOverview = () => {
-    if (!book) {
-      return (
-        <div className="p-6 text-center">
-          <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-          <h2 className="text-xl text-gray-600 mb-2">No book selected</h2>
-          <p className="text-gray-500">Choose a book from the sidebar to view its content</p>
-        </div>
-      );
-    }
-
+  if (!selectedTag) {
     return (
-      <div className="p-6">
-        <div className="text-center mb-8">
-          <BookOpen className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">{book.title}</h2>
-          {book.author && (
-            <p className="text-gray-600 mb-2">by {book.author}</p>
-          )}
-          <p className="text-sm text-gray-500">
-            {book.pages?.length || 0} pages • Uploaded {new Date(book.uploadedAt).toLocaleDateString()}
-          </p>
-        </div>
-
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Select a tag to view content</h3>
-        <p className="text-gray-600 mb-4">
-          Choose from the tags on the left to see all content related to that topic. 
-          You can view the content as a list sorted by page number or relevance.
-        </p>
-        
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong>Available tags:</strong>
-            <ul className="mt-2 space-y-1 max-h-32 overflow-hidden">
-              {tags?.slice(0, 8).map(tag => (
-                <li key={tag.id} className="flex items-center">
-                  <div 
-                    className="w-2 h-2 rounded-full mr-2"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  {tag.name}
-                </li>
-              )) || <li className="text-gray-500">No tags available</li>}
-              {tags && tags.length > 8 && (
-                <li className="text-gray-400 text-xs">+{tags.length - 8} more tags...</li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <strong>Book statistics:</strong>
-            <ul className="mt-2 space-y-1 text-gray-600">
-              <li>Total pages: {book?.pages?.length || 0}</li>
-              <li>Characters: {book?.pages?.reduce((acc, page) => acc + page.text.length, 0) || 0}</li>
-              <li>Average page length: {book?.pages?.length ? Math.round(book.pages.reduce((acc, page) => acc + page.text.length, 0) / book.pages.length) : 0} chars</li>
-            </ul>
-          </div>
-        </div>
+      <div className="p-6 text-center">
+        <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+        <h2 className="text-xl text-gray-600 mb-2">No tag selected</h2>
+        <p className="text-gray-500">Choose a tag to view its content</p>
       </div>
-    </div>
     );
-  };
+  }
 
-  const renderTaggedContent = () => (
+  return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <div>
@@ -179,11 +118,4 @@ export const ContentDisplay: React.FC<ContentDisplayProps> = ({
       </div>
     </div>
   );
-
-  return (
-    <div className="h-full overflow-y-auto">
-      {!selectedTag ? renderBookOverview() : renderTaggedContent()}
-    </div>
-  );
-};
- 
+});

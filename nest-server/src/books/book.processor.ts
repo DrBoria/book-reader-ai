@@ -79,6 +79,7 @@ export class BookProcessor extends WorkerHost {
             bookId,
             pageNumber: page.pageNumber,
             categories: availableCategories,
+            pageId,
           };
 
           const result =
@@ -90,24 +91,47 @@ export class BookProcessor extends WorkerHost {
 
           // Save new tags to database using TagsService
           const tagIdMapping: Record<string, string> = {};
+          
+          interface TagData {
+            name?: string;
+            value?: string;
+            category?: string;
+            confidence?: number;
+          }
+
           for (const tagData of result.tags) {
+            let tagInfo: TagData;
+            
+            if (typeof tagData === 'object' && tagData !== null) {
+              tagInfo = {
+                name: (tagData as unknown as TagData).name,
+                value: (tagData as unknown as TagData).value,
+                category: (tagData as unknown as TagData).category,
+                confidence: (tagData as unknown as TagData).confidence,
+              };
+            } else {
+              const stringValue = String(tagData);
+              tagInfo = {
+                name: stringValue,
+                value: stringValue,
+              };
+            }
+
+            const tagName = tagInfo.name || tagInfo.value || 'unknown';
+            const tagValue = tagInfo.value || '';
+            const categoryName = tagInfo.category;
+            const confidence = tagInfo.confidence ?? 0.5;
+
             const category = taggingInput.categories.find(
-              (c) =>
-                c.id === (tagData as any).category ||
-                c.name === (tagData as any).category,
+              (c) => c.id === categoryName || c.name === categoryName,
             );
             if (category) {
-              const tagName =
-                (tagData as any).name || (tagData as any).value || 'unknown';
-              const tagValue = (tagData as any).value;
-              const tagConfidence = (tagData as any).confidence;
-
               const tag = await this.tagsService.create({
                 name: tagName,
                 value: tagValue,
                 categoryId: category.id,
                 bookId: job.data.bookId,
-                confidence: tagConfidence,
+                confidence: confidence,
               });
               if (tagValue) {
                 tagIdMapping[tagValue] = tag.id;

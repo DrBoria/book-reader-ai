@@ -2,8 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores';
 import { TagPanel } from '../components/TagPanel';
-import { SearchScope } from '../components/SearchScope';
-import { ContentDisplay } from '../components/ContentDisplay';
+import { TaggedContentDisplay } from '../components/TaggedContentDisplay';
 import { AddCategoryModal } from '../components/AddCategoryModal';
 
 export const TagsPage: React.FC = observer(() => {
@@ -16,8 +15,7 @@ export const TagsPage: React.FC = observer(() => {
   }, [categoryStore, tagStore]);
 
   const handleTagSelect = (tagId: string) => {
-    const tag = tagStore.tags.find(t => t.id === tagId);
-    tagStore.setSelectedTag(tag);
+    tagStore.setSelectedTag(tagId);
   };
 
   const handleDeleteTag = async (tagId: string) => {
@@ -32,15 +30,12 @@ export const TagsPage: React.FC = observer(() => {
     name: string;
     description?: string;
     color?: string;
-    dataType?: string;
+    dataType?: 'text' | 'date' | 'number';
   }) => {
-    const newCategory = await categoryStore.createCategory(categoryData);
-    return newCategory;
+    await categoryStore.createCategory(categoryData);
   };
 
-  const handleScopeChange = (scope: 'all' | 'book' | 'tag', value?: string) => {
-    // Implementation for scope change
-  };
+
 
   return (
     <div className="p-6">
@@ -66,7 +61,7 @@ export const TagsPage: React.FC = observer(() => {
             tags={Array.from(tagStore.tags)}
             categories={Array.from(categoryStore.categories)}
             taggedContent={Array.from(tagStore.taggedContent)}
-            selectedTag={tagStore.selectedTag?.id || null}
+            selectedTag={tagStore.selectedTag || null}
             onTagSelect={handleTagSelect}
             onDeleteTag={handleDeleteTag}
             onBulkDeleteTags={handleBulkDeleteTags}
@@ -74,24 +69,11 @@ export const TagsPage: React.FC = observer(() => {
         </div>
         
         <div className="lg:col-span-2">
-          {bookStore.currentBook && (
-            <>
-              <SearchScope
-                currentBook={bookStore.currentBook}
-                selectedTag={tagStore.selectedTag?.id || null}
-                tags={tagStore.tags}
-                onScopeChange={handleScopeChange}
-              />
-              <ContentDisplay
-                book={bookStore.currentBook}
-                taggedContent={tagStore.taggedContent}
-                selectedTag={tagStore.selectedTag?.id || null}
-                tags={tagStore.tags}
-                isProcessing={uiStore.isProcessing}
-                processingProgress={uiStore.processingProgress}
-              />
-            </>
-          )}
+          <TaggedContentDisplay
+            taggedContent={Array.from(tagStore.taggedContent)}
+            selectedTag={tagStore.selectedTag || null}
+            tags={Array.from(tagStore.tags)}
+          />
         </div>
       </div>
     </div>

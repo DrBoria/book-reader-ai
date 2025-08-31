@@ -6,7 +6,7 @@ import { BookActions } from './BookActions';
 interface BookSelectorProps {
   books: BookContent[];
   currentBook: BookContent | null;
-  onBookSelect: (book: BookContent | null) => void;
+  onBookSelect: (bookId: string | null) => void;
   onNewBook: () => void;
   onUpdateBook: (bookId: string, updates: { title?: string; author?: string }) => Promise<boolean>;
   onDeleteBook: (bookId: string) => Promise<boolean>;
@@ -20,22 +20,8 @@ export const BookSelector: React.FC<BookSelectorProps> = ({
   onUpdateBook,
   onDeleteBook
 }) => {
-  const getStatusIcon = (status: BookContent['status']) => {
-    switch (status) {
-      case 'completed': return '✅';
-      case 'processing': return '⏳';
-      case 'failed': return '❌';
-      default: return '📄';
-    }
-  };
-
-  const getStatusColor = (status: BookContent['status']) => {
-    switch (status) {
-      case 'completed': return 'text-green-600';
-      case 'processing': return 'text-yellow-600';
-      case 'failed': return 'text-red-600';
-      default: return 'text-gray-600';
-    }
+  const getBookIcon = () => {
+    return '📄';
   };
 
   return (
@@ -73,43 +59,45 @@ export const BookSelector: React.FC<BookSelectorProps> = ({
         </button>
 
         {books.map((book) => (
-          <button
-            key={book.id}
-            onClick={() => onBookSelect(book)}
-            className={`w-full text-left p-3 rounded-md border transition-colors ${
-              currentBook?.id === book.id 
-                ? 'bg-blue-50 border-blue-200 text-blue-800' 
-                : 'hover:bg-gray-50'
-            }`}
-          >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center min-w-0 flex-1">
-                <span className="text-lg mr-2">{getStatusIcon(book.status)}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="font-medium truncate">{book.title}</div>
-                  {book.author && (
-                    <div className="text-sm text-gray-500 truncate">
-                      by {book.author}
+          <div key={book.id} className={`rounded-md border transition-colors ${
+            currentBook?.id === book.id 
+              ? 'bg-blue-50 border-blue-200' 
+              : 'hover:bg-gray-50'
+          }`}>
+            <button
+              onClick={() => onBookSelect(book.id)}
+              className={`w-full text-left p-3 ${
+                currentBook?.id === book.id 
+                  ? 'text-blue-800' 
+                  : ''
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                  <div className="flex items-center min-w-0 flex-1">
+                    <span className="text-lg mr-2">{getBookIcon()}</span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium truncate">{book.title}</div>
+                      {book.author && (
+                        <div className="text-sm text-gray-500 truncate">
+                          by {book.author}
+                        </div>
+                      )}
                     </div>
-                  )}
+                  </div>
                 </div>
-              </div>
-              <div className={`text-xs ${getStatusColor(book.status)} ml-2`}>
-                {book.status}
-              </div>
-            </div>
-            <div className="text-xs text-gray-400 mt-1">
-              {book.totalPages} pages • {new Date(book.uploadedAt).toLocaleDateString()}
-            </div>
+                <div className="text-xs text-gray-400 mt-1">
+                  {book.pages.length} pages • {new Date(book.uploadedAt).toLocaleDateString()}
+                </div>
+            </button>
             
-            <div className="mt-2 pt-2 border-t border-gray-200">
+            <div className="px-3 pb-3 pt-2 border-t border-gray-200">
               <BookActions
                 book={book}
                 onUpdate={onUpdateBook}
                 onDelete={onDeleteBook}
               />
             </div>
-          </button>
+          </div>
         ))}
       </div>
 

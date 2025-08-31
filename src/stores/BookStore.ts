@@ -17,7 +17,7 @@ const mapApiBookToMstBook = (apiBook: BookContent) => ({
 });
 
 export const Book = types.model('Book', {
-  id: types.string,
+  id: types.identifier,
   title: types.string,
   author: types.string,
   filePath: types.string,
@@ -41,8 +41,11 @@ export const BookStore = types
     isLoading: types.boolean,
   })
   .actions((self) => ({
-    setBooks(books: Instance<typeof Book>[]) {
-      self.books.replace(books);
+    setBooks(books: (Instance<typeof Book> | any)[]) {
+      const mstBooks = books.map((book) => 
+        Book.is(book) ? book : Book.create(book)
+      );
+      self.books.replace(mstBooks);
     },
     setCurrentBook(book: Instance<typeof Book> | undefined) {
       self.currentBook = book;
@@ -70,7 +73,7 @@ export const BookStore = types
       self.setLoading(true);
       try {
         const apiBooks: BookContent[] = yield bookService.getAllBooks();
-        const mstBooks = apiBooks.map(mapApiBookToMstBook);
+        const mstBooks = apiBooks.map((book) => Book.create(mapApiBookToMstBook(book)));
         self.setBooks(mstBooks);
       } catch (error) {
         console.error('Failed to load books:', error);
@@ -84,8 +87,17 @@ export const BookStore = types
       try {
         const apiBook: BookContent | null = yield bookService.getBook(id);
         if (apiBook) {
-          const mstBook = mapApiBookToMstBook(apiBook);
-          self.setCurrentBook(mstBook);
+          const mstBook = Book.create(mapApiBookToMstBook(apiBook));
+          // Check if book already exists in store
+          let existingBook = self.books.find(b => b.id === apiBook.id);
+          if (!existingBook) {
+            // Add to books array if not exists
+            self.addBook(mstBook);
+            existingBook = self.books.find(b => b.id === apiBook.id);
+          }
+          if (existingBook) {
+            self.setCurrentBook(existingBook);
+          }
         }
       } catch (error) {
         console.error('Failed to load book:', error);
@@ -104,11 +116,12 @@ export const BookStore = types
       }
     })
   })).actions((self) => ({
-    createBook: flow(function* () {
+    createBook: flow(function* (bookData: any) {
       try {
-        yield self.loadBooks();
-        const latestBook = self.books[self.books.length - 1];
-        return latestBook;
+        const newBook = yield bookService.createBook(bookData);
+        const mstBook = Book.create(mapApiBookToMstBook(newBook));
+        self.books.push(mstBook);
+        return mstBook;
       } catch (error) {
         console.error('Failed to create book:', error);
         throw error;

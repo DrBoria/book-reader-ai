@@ -20,6 +20,9 @@ importers:
       mobx:
         specifier: 6.12.0
         version: 6.12.0
+      mobx-devtools-mst:
+        specifier: ^0.9.46
+        version: 0.9.46(mobx-state-tree@5.4.1(mobx@6.12.0))(mobx@6.12.0)
       mobx-react-lite:
         specifier: 4.0.7
         version: 4.0.7(mobx@6.12.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
@@ -1223,6 +1226,12 @@ packages:
   minipass@7.1.2:
     resolution: {integrity: sha512-qOOzS1cBTWYF4BH8fVePDBOO9iptMnGUEZwNc/cMWnTV2nVLZ7VoNWEPHkYczZA0pdoA7dl6e7FL659nX9S2aw==}
     engines: {node: '>=16 || 14 >=14.17'}
+
+  mobx-devtools-mst@0.9.46:
+    resolution: {integrity: sha512-MqY4JzUf1Pkyd6NrperRUoohCHSDrNGiqjg2ejpG8ZJPfBIDGCBvfdGsa2LbJnlkpf8lmaiO3ycFssVjdcu6Cw==}
+    peerDependencies:
+      mobx: ^2.2.0 || ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0
+      mobx-state-tree: '*'
 
   mobx-react-lite@4.0.7:
     resolution: {integrity: sha512-RjwdseshK9Mg8On5tyJZHtGD+J78ZnCnRaxeQDSiciKVQDUbfZcXhmld0VMxAwvcTnPEHZySGGewm467Fcpreg==}
@@ -2883,6 +2892,11 @@ snapshots:
       brace-expansion: 2.0.2
 
   minipass@7.1.2: {}
+
+  mobx-devtools-mst@0.9.46(mobx-state-tree@5.4.1(mobx@6.12.0))(mobx@6.12.0):
+    dependencies:
+      mobx: 6.12.0
+      mobx-state-tree: 5.4.1(mobx@6.12.0)
 
   mobx-react-lite@4.0.7(mobx@6.12.0)(react-dom@18.3.1(react@18.3.1))(react@18.3.1):
     dependencies:

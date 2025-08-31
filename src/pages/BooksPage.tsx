@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores';
 import { BookSelector } from '../components/BookSelector';
-import { ContentDisplay } from '../components/ContentDisplay';
+import { BookOverview } from '../components/BookOverview';
 
 export const BooksPage: React.FC = observer(() => {
   const { bookStore, tagStore, uiStore } = useStore();
@@ -15,8 +15,16 @@ export const BooksPage: React.FC = observer(() => {
     tagStore.loadTags();
   }, [bookStore, tagStore]);
 
-  const handleBookSelect = (book: any) => {
-    bookStore.setCurrentBook(book);
+  const handleBookSelect = (bookId: string | null) => {
+    if (bookId === null) {
+      bookStore.setCurrentBook(undefined);
+      return;
+    }
+    
+    const mstBook = bookStore.books.find(b => b.id === bookId);
+    if (mstBook) {
+      bookStore.setCurrentBook(mstBook);
+    }
   };
 
   const handleNewBook = () => {
@@ -49,14 +57,9 @@ export const BooksPage: React.FC = observer(() => {
         <div className="mt-6">
           <h3 className="text-xl font-semibold mb-4">
             Current Book: {bookStore.currentBook.title}
-          </h3>
-          <ContentDisplay
+          </h3>          <BookOverview
             book={bookStore.currentBook}
-            taggedContent={Array.from(tagStore.taggedContent)}
-            selectedTag={tagStore.selectedTag?.id || null}
             tags={Array.from(tagStore.tags)}
-            isProcessing={uiStore.isProcessing}
-            processingProgress={uiStore.processingProgress}
           />
         </div>
       )}

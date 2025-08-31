@@ -47,6 +47,15 @@ export class TaggedContentService {
     return await this.taggedContentRepository.find({ where: { tagId } });
   }
 
+  async findByTagIdAndBookId(
+    tagId: string,
+    bookId: string,
+  ): Promise<TaggedContent[]> {
+    return await this.taggedContentRepository.find({
+      where: { tagId, bookId },
+    });
+  }
+
   async deleteByBookId(bookId: string): Promise<void> {
     const items = await this.taggedContentRepository.find({
       where: { bookId },

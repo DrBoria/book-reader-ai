@@ -9,6 +9,17 @@ import { ChatPage } from './pages/ChatPage';
 import { UploadPage } from './pages/UploadPage';
 import { SettingsPage } from './pages/SettingsPage';
 
+// Enable MST devtools in development
+if (process.env.NODE_ENV === 'development') {
+  import('mobx-devtools-mst').then((mstDevtools) => {
+    if (mstDevtools.default) {
+      mstDevtools.default(rootStore);
+    }
+  }).catch((error) => {
+    console.warn('Failed to connect MST DevTools:', error);
+  });
+}
+
 const App: React.FC = () => {
   return (
     <StoreProvider value={rootStore}>

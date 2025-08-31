@@ -151,7 +151,7 @@ export interface TaggedContent {
   pageNumber: number;
   position: number;
   relevance: number;
-  context?: string;
+  text?: string;
   originalText: string;
   createdAt: string;
 }

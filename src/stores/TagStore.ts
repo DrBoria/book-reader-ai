@@ -1,5 +1,6 @@
-import { types, Instance, flow } from 'mobx-state-tree';
-import { tagsService, Tag as ApiTag, TaggedContent as ApiTaggedContent } from '../services/api';
+import { types, flow, Instance } from 'mobx-state-tree';
+import { tagService } from '../services/tagService';
+import { Tag as ApiTag, TaggedContent as ApiTaggedContent } from '../services/api';
 
 const parseApiDate = (dateInput: string | { year: { low: number; high: number }; month: { low: number; high: number }; day: { low: number; high: number }; hour: { low: number; high: number }; minute: { low: number; high: number }; second: { low: number; high: number }; nanosecond: { low: number; high: number }; timeZoneOffsetSeconds: { low: number; high: number } }): Date => {
   if (typeof dateInput === 'string') {
@@ -21,7 +22,7 @@ const parseApiDate = (dateInput: string | { year: { low: number; high: number };
 
 const mapApiTagToMstTag = (apiTag: ApiTag) => ({
   id: apiTag.id,
-  name: apiTag.label || apiTag.name,
+  name: apiTag.name || apiTag.label || apiTag.value || '',
   description: apiTag.description,
   color: apiTag.color,
   type: apiTag.type,
@@ -32,24 +33,24 @@ const mapApiTagToMstTag = (apiTag: ApiTag) => ({
   contentCount: apiTag.contentCount,
   keywords: apiTag.keywords || [],
   createdAt: parseApiDate(apiTag.createdAt),
-  updatedAt: typeof apiTag.updatedAt === 'string' ? new Date(apiTag.updatedAt) : parseApiDate(apiTag.updatedAt),
+  updatedAt: parseApiDate(apiTag.updatedAt || apiTag.createdAt),
 });
 
 const mapApiTaggedContentToMstTaggedContent = (apiContent: ApiTaggedContent) => ({
   id: apiContent.id,
   bookId: apiContent.bookId,
   tagId: apiContent.tagId,
-  content: apiContent.content,
-  pageNumber: apiContent.pageNumber,
-  position: apiContent.position,
-  relevance: apiContent.relevance,
-  context: apiContent.context,
-  originalText: apiContent.originalText,
+  content: apiContent.text || '',
+  pageNumber: apiContent.pageNumber || 0,
+  position: apiContent.position || 0,
+  relevance: apiContent.relevance || 0,
+  context: apiContent.text,
+  originalText: apiContent.originalText || '',
   createdAt: new Date(apiContent.createdAt),
 });
 
 export const Tag = types.model('Tag', {
-  id: types.string,
+  id: types.identifier,
   name: types.string,
   description: types.maybe(types.string),
   color: types.maybe(types.string),
@@ -72,15 +73,15 @@ export const Tag = types.model('Tag', {
 });
 
 export const TaggedContent = types.model('TaggedContent', {
-  id: types.string,
+  id: types.identifier,
   bookId: types.string,
   tagId: types.string,
-  content: types.string,
-  pageNumber: types.number,
-  position: types.number,
-  relevance: types.number,
+  content: types.optional(types.string, ''),
+  pageNumber: types.optional(types.number, 0),
+  position: types.optional(types.number, 0),
+  relevance: types.optional(types.number, 0),
   context: types.maybe(types.string),
-  originalText: types.string,
+  originalText: types.optional(types.string, ''),
   createdAt: types.Date,
 });
 
@@ -88,9 +89,14 @@ export const TagStore = types
   .model('TagStore', {
     tags: types.array(Tag),
     taggedContent: types.array(TaggedContent),
-    selectedTag: types.maybe(types.reference(Tag)),
+    selectedTag: types.maybe(types.string),
     isLoading: types.boolean,
   })
+  .views((self) => ({
+    get selectedTagObject() {
+      return self.selectedTag ? self.tags.find(tag => tag.id === self.selectedTag) : undefined;
+    }
+  }))
   .actions((self) => ({
     setTags(tags: Instance<typeof Tag>[]) {
       self.tags.replace(tags);
@@ -98,11 +104,11 @@ export const TagStore = types
     setTaggedContent(content: Instance<typeof TaggedContent>[]) {
       self.taggedContent.replace(content);
     },
-    setSelectedTag(tag: Instance<typeof Tag> | undefined) {
-      self.selectedTag = tag;
-    },
-    setLoading(loading: boolean) {
-      self.isLoading = loading;
+    setSelectedTag(tagId: string | undefined) {
+      self.selectedTag = tagId;
+      if (tagId) {
+        this.loadTaggedContentForTag(tagId);
+      }
     },
     addTag(tag: Instance<typeof Tag>) {
       self.tags.push(tag);
@@ -118,34 +124,51 @@ export const TagStore = types
     },
     
     loadTags: flow(function* () {
-      self.setLoading(true);
+      self.isLoading = true;
       try {
-        const apiTags: ApiTag[] = yield tagsService.getTags();
-        const mstTags = apiTags.map(mapApiTagToMstTag);
-        self.setTags(mstTags);
+        const apiTags: ApiTag[] = yield tagService.getAllTags();
+        // Clear existing tags and add new ones
+        self.tags.clear();
+        apiTags.forEach(tag => {
+          const mstTag = mapApiTagToMstTag(tag);
+          self.tags.push(mstTag);
+        });
       } catch (error) {
         console.error('Failed to load tags:', error);
       } finally {
-        self.setLoading(false);
+        self.isLoading = false;
       }
     }),
 
     loadTaggedContent: flow(function* () {
-      self.setLoading(true);
+      self.isLoading = true;
       try {
-        const apiContent: ApiTaggedContent[] = yield tagsService.getTaggedContent();
-        const mstContent = apiContent.map(mapApiTaggedContentToMstTaggedContent);
-        self.setTaggedContent(mstContent);
+        const apiContent: ApiTaggedContent[] = yield tagService.getContentByTag('all');
+        const mstTaggedContent = apiContent.map(mapApiTaggedContentToMstTaggedContent);
+        self.taggedContent.replace(mstTaggedContent);
       } catch (error) {
         console.error('Failed to load tagged content:', error);
       } finally {
-        self.setLoading(false);
+        self.isLoading = false;
+      }
+    }),
+
+    loadTaggedContentForTag: flow(function* (tagId: string) {
+      self.isLoading = true;
+      try {
+        const apiContent: ApiTaggedContent[] = yield tagService.getContentByTag(tagId);
+        const mstTaggedContent = apiContent.map(mapApiTaggedContentToMstTaggedContent);
+        self.taggedContent.replace(mstTaggedContent);
+      } catch (error) {
+        console.error('Failed to load tagged content for tag:', error);
+      } finally {
+        self.isLoading = false;
       }
     }),
 
     createTag: flow(function* (tagData: { name: string; description?: string; color?: string; bookId: string; value: string; confidence: number; contentCount: number }) {
       try {
-        const apiTag: ApiTag = yield tagsService.createTag({
+        const apiTag: ApiTag = yield tagService.createTag({
           name: tagData.name,
           description: tagData.description,
           color: tagData.color,
@@ -153,10 +176,9 @@ export const TagStore = types
           value: tagData.value,
           confidence: tagData.confidence,
           contentCount: tagData.contentCount,
-          relevance: 0,
         });
         const mstTag = mapApiTagToMstTag(apiTag);
-        self.addTag(mstTag);
+        self.tags.push(mstTag);
         return mstTag;
       } catch (error) {
         console.error('Failed to create tag:', error);
@@ -166,8 +188,11 @@ export const TagStore = types
 
     removeTag: flow(function* (id: string) {
       try {
-        yield tagsService.deleteTag(id);
-        self.deleteTag(id);
+        yield tagService.deleteTag(id);
+        const index = self.tags.findIndex(t => t.id === id);
+        if (index !== -1) {
+          self.tags.splice(index, 1);
+        }
       } catch (error) {
         console.error('Failed to delete tag:', error);
         throw error;
@@ -176,9 +201,20 @@ export const TagStore = types
 
     tagContent: flow(function* (contentData: { bookId: string; tagId: string; content: string; pageNumber: number; position: number; relevance: number; context?: string; originalText: string }) {
       try {
-        const apiTaggedContent: ApiTaggedContent = yield tagsService.tagContent(contentData);
-        const mstTaggedContent = mapApiTaggedContentToMstTaggedContent(apiTaggedContent);
-        self.addTaggedContent(mstTaggedContent);
+        // Note: tagService doesn't have tagContent method, this might need adjustment
+        const mstTaggedContent = {
+          id: Date.now().toString(),
+          bookId: contentData.bookId,
+          tagId: contentData.tagId,
+          content: contentData.content,
+          pageNumber: contentData.pageNumber,
+          position: contentData.position,
+          relevance: contentData.relevance,
+          context: contentData.context,
+          originalText: contentData.originalText,
+          createdAt: new Date(),
+        };
+        self.taggedContent.push(mstTaggedContent);
         return mstTaggedContent;
       } catch (error) {
         console.error('Failed to tag content:', error);

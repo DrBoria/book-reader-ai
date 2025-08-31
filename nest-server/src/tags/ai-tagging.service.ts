@@ -5,12 +5,15 @@ import { Category } from '../category/category.entity';
 import { Tag } from './entities/tag.entity';
 import { TaggedContent } from './entities/tagged-content.entity';
 import { fixCommonJsonIssues } from 'src/utils/json';
+import { Neo4jService } from 'src/database/neo4j.service';
+import { Repository } from 'neogm';
 
 export interface TaggingInput {
   text: string;
   bookId: string;
   pageNumber: number;
   categories: Category[];
+  pageId: string;
 }
 
 export interface TaggingResult {
@@ -25,16 +28,25 @@ export interface TaggingResult {
 
 @Injectable()
 export class AITaggingService {
+  private readonly tagRepository: Repository<Tag>;
+  private readonly tagContentRepository: Repository<TaggedContent>;
   constructor(
     private readonly httpService: HttpService,
     private readonly entityWorkflow: EntityWorkflow,
-  ) {}
+    private readonly neo4jService: Neo4jService,
+  ) {
+    const neogm = this.neo4jService.getNeoGM();
+    this.tagRepository = neogm.getRepository(Tag);
+    this.tagContentRepository = neogm.getRepository(TaggedContent);
+  }
 
   private generateId(): string {
     return Math.random().toString(36).substring(2, 9);
   }
 
-  async tagPageContent(input: TaggingInput): Promise<TaggingResult> {
+  async tagPageContent(
+    input: TaggingInput & { pageId: string }
+  ): Promise<TaggingResult> {
     const startTime = Date.now();
 
     // Skip if text is too short or meaningless
@@ -79,12 +91,13 @@ export class AITaggingService {
       }
 
       // Parse the workflow result into proper format
-      const result = this.parseEntityExtractionResponse(
+      const result = await this.parseEntityExtractionResponse(
         JSON.stringify(workflowResult.entities),
         input.text,
         input.pageNumber,
         input.bookId,
         input.categories,
+        input.pageId,
       );
 
       const processingTime = Date.now() - startTime;
@@ -107,19 +120,20 @@ export class AITaggingService {
         input.pageNumber,
         input.bookId,
         input.categories,
+        input.pageId,
       );
 
-      const processingTime = Date.now() - startTime;
+        const processingTime = Date.now() - startTime;
 
-      return {
-        tags: fallbackResult.tags,
-        taggedContent: fallbackResult.taggedContent,
-        metadata: {
-          totalRetries: 0,
-          processingTime,
-          categoriesUsed: input.categories.map((cat) => cat.name),
-        },
-      };
+        return {
+          tags: fallbackResult.tags,
+          taggedContent: fallbackResult.taggedContent,
+          metadata: {
+            totalRetries: 0,
+            processingTime,
+            categoriesUsed: input.categories.map((c) => c.name),
+          },
+        };
     }
   }
 
@@ -269,16 +283,17 @@ Your response:`;
     return { approved: true, feedback: '' };
   }
 
-  private parseEntityExtractionResponse(
+  private async parseEntityExtractionResponse(
     response: string,
     originalText: string,
     pageNumber: number,
     bookId: string,
     categories: Category[],
-  ): {
+    pageId: string,
+  ): Promise<{
     tags: Tag[];
     taggedContent: TaggedContent[];
-  } {
+  }> {
     try {
       // Extract JSON from response
       const jsonMatch = response.match(/\[[\s\S]*\]/);
@@ -314,24 +329,33 @@ Your response:`;
       const taggedContent: TaggedContent[] = [];
 
       for (const entity of parsed) {
+        const entityTyped = entity as {
+          category?: string;
+          value?: string | null;
+          content?: string;
+          confidence?: number;
+          startIndex?: number;
+          endIndex?: number;
+        };
+        
         // Strict validation
         if (
-          !entity.category ||
-          !entity.value ||
-          entity.value === null ||
-          !entity.content
+          !entityTyped.category ||
+          !entityTyped.value ||
+          entityTyped.value === null ||
+          !entityTyped.content
         ) {
-          console.log('Skipping invalid entity:', entity);
+          console.log('Skipping invalid entity:', entityTyped);
           continue;
         }
 
-        const entityValue = String(entity.value).trim();
+        const entityValue = String(entityTyped.value).trim();
         if (!entityValue || entityValue.length < 2) {
           console.log('Skipping empty/short entity:', entityValue);
           continue;
         }
 
-        const entityCategoryLower = entity.category.toLowerCase();
+        const entityCategoryLower = entityTyped.category.toLowerCase();
 
         const category = categories.find(
           (c) => c.name.toLowerCase() === entityCategoryLower,
@@ -340,7 +364,7 @@ Your response:`;
         if (!category) {
           console.log(
             'Category not found:',
-            entity.category,
+            entityTyped.category,
             'Available:',
             categories.map((c) => c.name).join(', '),
           );
@@ -348,7 +372,7 @@ Your response:`;
         }
 
         // Adjust confidence threshold based on category type
-        const confidence = Math.max(0, Math.min(1, entity.confidence || 0.5));
+        const confidence = Math.max(0, Math.min(1, entityTyped.confidence || 0.5));
         const confidenceThreshold = category.dataType === 'text' ? 0.6 : 0.8; // Lower threshold for people/locations
 
         if (confidence < confidenceThreshold) {
@@ -361,23 +385,31 @@ Your response:`;
         }
 
         // Create dynamic tag
-        const tag = new Tag();
-        tag.id = this.generateId();
-        tag.name = entityValue;
-        tag.value = entityValue;
-        tag.bookId = bookId;
-        tag.categoryId = category.id;
-        tag.confidence = confidence;
+        const tag = await this.tagRepository.create({
+          id: this.generateId(),
+          name: entityValue,
+          value: entityValue,
+          bookId: bookId,
+          categoryId: category.id,
+          confidence: confidence,
+        });
+
+        await this.tagRepository.save(tag);
         tags.push(tag);
 
         // Create tagged content
-        const content = new TaggedContent();
-        content.id = this.generateId();
-        content.tagId = tag.id;
-        content.pageId = ''; // This will need to be set properly when pages are created
-        content.bookId = bookId;
-        content.text = entity.content;
-        content.confidence = confidence;
+        const content = await this.tagContentRepository.create({
+          id: this.generateId(),
+          tagId: tag.id,
+          pageId: pageId,
+          bookId,
+          text: entityTyped.content || originalText,
+          startIndex: entityTyped.startIndex || 0,
+          endIndex: entityTyped.endIndex || (entityTyped.content ? entityTyped.content.length : originalText.length),
+          confidence: confidence,
+        });
+        await this.tagContentRepository.save(content);
+
         taggedContent.push(content);
       }
 
@@ -395,6 +427,7 @@ Your response:`;
     pageNumber: number,
     bookId: string,
     categories: Category[],
+    pageId: string,
   ): {
     tags: Tag[];
     taggedContent: TaggedContent[];
@@ -429,7 +462,7 @@ Your response:`;
       const content = new TaggedContent();
       content.id = this.generateId();
       content.tagId = tag.id;
-      content.pageId = `page_${pageNumber}`;
+      content.pageId = pageId;
       content.bookId = bookId;
       content.text = text.substring(0, 200);
       content.confidence = 0.5;

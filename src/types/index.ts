@@ -3,12 +3,12 @@ export interface TagCategory {
   name: string;
   description?: string;
   color?: string;
-  type?: "default" | "custom";
-  dataType?: "text" | "number" | "date";
+  type?: "default" | "custom" | "system";
+  dataType?: "text" | "number" | "date" | "string";
   keywords?: string[];
-  tags?: Tag[];  // For grouped responses
-  createdAt?: string;
-  updatedAt?: string;
+  tags?: string[];  // Array of tag IDs
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface Tag {
@@ -16,14 +16,15 @@ export interface Tag {
   name: string;
   description?: string;
   color?: string;
-  type?: "default" | "dynamic";
+  type?: "default" | "dynamic" | "entity" | "concept" | "keyword" | "custom";
   bookId?: string;  // For dynamic tags
   categoryId?: string;  // For dynamic tags
   value?: string;
   confidence?: number;
   contentCount?: number;  // Server-provided count
-  createdAt?: string;
-  updatedAt?: string;
+  keywords?: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface BookPage {
