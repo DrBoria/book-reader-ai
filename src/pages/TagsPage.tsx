@@ -4,6 +4,10 @@ import { useStore } from '../stores';
 import { TagPanel } from '../components/TagPanel';
 import { TaggedContentDisplay } from '../components/TaggedContentDisplay';
 import { AddCategoryModal } from '../components/AddCategoryModal';
+import { Typography, Button } from '@mui/material';
+import { Add as AddIcon } from '@mui/icons-material';
+import { Container } from '../components/common/Container';
+import { ContentCard } from '../components/common/ContentCard';
 
 export const TagsPage: React.FC = observer(() => {
   const { bookStore, tagStore, categoryStore, uiStore } = useStore();
@@ -35,19 +39,20 @@ export const TagsPage: React.FC = observer(() => {
     await categoryStore.createCategory(categoryData);
   };
 
-
-
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold">Tags</h2>
-        <button
-          onClick={() => setShowAddCategoryModal(true)}
-          className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-        >
-          Add Category
-        </button>
-      </div>
+    <Container type="page">
+      <Typography variant="h4" gutterBottom>
+        Tags
+      </Typography>
+      
+      <Button
+        variant="contained"
+        startIcon={<AddIcon />}
+        onClick={() => setShowAddCategoryModal(true)}
+        style={{ marginBottom: '1.5rem' }}
+      >
+        Add Category
+      </Button>
       
       <AddCategoryModal
         isOpen={showAddCategoryModal}
@@ -55,27 +60,30 @@ export const TagsPage: React.FC = observer(() => {
         onAddCategory={handleAddCustomCategory}
       />
       
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-1">
-          <TagPanel
-            tags={Array.from(tagStore.tags)}
-            categories={Array.from(categoryStore.categories)}
-            taggedContent={Array.from(tagStore.taggedContent)}
-            selectedTag={tagStore.selectedTag || null}
-            onTagSelect={handleTagSelect}
-            onDeleteTag={handleDeleteTag}
-            onBulkDeleteTags={handleBulkDeleteTags}
-          />
+      <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap' }}>
+        <div style={{ flex: '1 1 300px', minWidth: 300 }}>
+          <ContentCard type="list" fullWidth>
+            <TagPanel
+              tags={Array.from(tagStore.tags)}
+              categories={Array.from(categoryStore.categories)}
+              taggedContent={Array.from(tagStore.taggedContent)}
+              selectedTag={tagStore.selectedTag || null}
+              onTagSelect={handleTagSelect}
+              onDeleteTag={handleDeleteTag}
+            />
+          </ContentCard>
         </div>
         
-        <div className="lg:col-span-2">
-          <TaggedContentDisplay
-            taggedContent={Array.from(tagStore.taggedContent)}
-            selectedTag={tagStore.selectedTag || null}
-            tags={Array.from(tagStore.tags)}
-          />
+        <div style={{ flex: '2 1 600px', minWidth: 300 }}>
+          <ContentCard type="list" fullWidth>
+            <TaggedContentDisplay
+              taggedContent={Array.from(tagStore.taggedContent)}
+              selectedTag={tagStore.selectedTag || null}
+              tags={Array.from(tagStore.tags)}
+            />
+          </ContentCard>
         </div>
       </div>
-    </div>
+    </Container>
   );
 });

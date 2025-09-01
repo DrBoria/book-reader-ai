@@ -1,7 +1,9 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
 import { BookContent, Tag } from "../types";
+import { Typography, List, ListItem, Chip, Container } from "@mui/material";
 import { BookOpen } from "lucide-react";
+import { ContentCard } from "./common/ContentCard";
 
 interface BookOverviewProps {
   book: BookContent | null;
@@ -14,62 +16,81 @@ export const BookOverview: React.FC<BookOverviewProps> = observer(({
 }) => {
   if (!book) {
     return (
-      <div className="p-6 text-center">
-        <BookOpen className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-        <h2 className="text-xl text-gray-600 mb-2">No book selected</h2>
-        <p className="text-gray-500">Choose a book from the sidebar to view its content</p>
-      </div>
+      <ContentCard>
+        <BookOpen size={64} />
+        <Typography variant="h6">No book selected</Typography>
+        <Typography variant="body2" color="text.secondary">
+          Choose a book from the sidebar to view its content
+        </Typography>
+      </ContentCard>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="text-center mb-8">
-        <BookOpen className="h-16 w-16 text-blue-600 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold text-gray-900 mb-2">{book.title}</h2>
-        {book.author && (
-          <p className="text-gray-600 mb-2">by {book.author}</p>
-        )}
-        <p className="text-sm text-gray-500">
-          {book.pages?.length || 0} pages • Uploaded {new Date(book.uploadedAt).toLocaleDateString()}
-        </p>
-      </div>
+    <ContentCard type="overview" container>
+      <BookOpen size={64} />
+      <Typography variant="h4" gutterBottom>
+        {book.title}
+      </Typography>
+      {book.author && (
+        <Typography variant="body1" color="text.secondary" gutterBottom>
+          by {book.author}
+        </Typography>
+      )}
+      <Typography variant="body2" color="text.secondary" gutterBottom>
+        {book.pages?.length || 0} pages • Uploaded {new Date(book.uploadedAt).toLocaleDateString()}
+      </Typography>
 
-      <div className="bg-gray-50 rounded-lg p-6">
-        <h3 className="text-lg font-semibold mb-4">Select a tag to view content</h3>
-        <p className="text-gray-600 mb-4">
-          Choose from the tags on the left to see all content related to that topic. 
-          You can view the content as a list sorted by page number or relevance.
-        </p>
+      <Typography variant="h6" gutterBottom>
+        Select a tag to view content
+      </Typography>
+      <Typography variant="body2" color="text.secondary" gutterBottom>
+        Choose from the tags on the left to see all content related to that topic.
+      </Typography>
+      
+      <Container maxWidth="sm">
+        <Typography variant="body2" fontWeight="bold" gutterBottom>
+          Available tags:
+        </Typography>
+        <List dense>
+          {tags?.slice(0, 8).map(tag => (
+            <ListItem key={tag.id}>
+              <Chip
+                label={tag.name}
+                size="small"
+              />
+            </ListItem>
+          ))}
+          {tags && tags.length > 8 && (
+            <ListItem>
+              <Typography variant="caption">
+                +{tags.length - 8} more tags...
+              </Typography>
+            </ListItem>
+          )}
+        </List>
         
-        <div className="grid grid-cols-2 gap-4 text-sm">
-          <div>
-            <strong>Available tags:</strong>
-            <ul className="mt-2 space-y-1 max-h-32 overflow-hidden">
-              {tags?.slice(0, 8).map(tag => (
-                <li key={tag.id} className="flex items-center">
-                  <div 
-                    className="w-2 h-2 rounded-full mr-2"
-                    style={{ backgroundColor: tag.color }}
-                  />
-                  {tag.name}
-                </li>
-              )) || <li className="text-gray-500">No tags available</li>}
-              {tags && tags.length > 8 && (
-                <li className="text-gray-400 text-xs">+{tags.length - 8} more tags...</li>
-              )}
-            </ul>
-          </div>
-          <div>
-            <strong>Book statistics:</strong>
-            <ul className="mt-2 space-y-1 text-gray-600">
-              <li>Total pages: {book?.pages?.length || 0}</li>
-              <li>Characters: {book?.pages?.reduce((acc, page) => acc + page.text.length, 0) || 0}</li>
-              <li>Average page length: {book?.pages?.length ? Math.round(book.pages.reduce((acc, page) => acc + page.text.length, 0) / book.pages.length) : 0} chars</li>
-            </ul>
-          </div>
-        </div>
-      </div>
-    </div>
+        <Typography variant="body2" fontWeight="bold" gutterBottom>
+          Book statistics:
+        </Typography>
+        <List dense>
+          <ListItem>
+            <Typography variant="body2">
+              Total pages: {book?.pages?.length || 0}
+            </Typography>
+          </ListItem>
+          <ListItem>
+            <Typography variant="body2">
+              Characters: {book?.pages?.reduce((acc, page) => acc + page.text.length, 0) || 0}
+            </Typography>
+          </ListItem>
+          <ListItem>
+            <Typography variant="body2">
+              Average page length: {book?.pages?.length ? Math.round(book.pages.reduce((acc, page) => acc + page.text.length, 0) / book.pages.length) : 0} chars
+            </Typography>
+          </ListItem>
+        </List>
+      </Container>
+    </ContentCard>
   );
 });

@@ -1,5 +1,7 @@
 import React, { useRef } from "react";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Typography, Button, CircularProgress } from "@mui/material";
+import { Upload, FileText } from "lucide-react";
+import { ContentCard } from "./common/ContentCard";
 
 interface FileUploadProps {
   onFileUpload: (file: File) => void;
@@ -34,45 +36,51 @@ export const FileUpload: React.FC<FileUploadProps> = ({ onFileUpload, isProcessi
 
   if (isProcessing) {
     return (
-      <div className="text-center py-12">
-        <Loader2 className="h-12 w-12 animate-spin text-blue-600 mx-auto mb-4" />
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
+      <ContentCard type="upload" container center spacing={3}>
+        <CircularProgress />
+        <Typography variant="h6" gutterBottom>
           Processing your book...
-        </h3>
-        <p className="text-gray-600">
+        </Typography>
+        <Typography variant="body2" color="text.secondary">
           The AI agent is analyzing and tagging your content. This may take a few moments.
-        </p>
-      </div>
+        </Typography>
+      </ContentCard>
     );
   }
 
   return (
-    <div
-      className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 transition-colors cursor-pointer"
+    <ContentCard
+      type="upload"
+      container
+      center
+      spacing={3}
+      variant="outlined"
       onDrop={handleDrop}
       onDragOver={handleDragOver}
       onClick={() => fileInputRef.current?.click()}
     >
-      <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-      <h3 className="text-xl font-medium text-gray-900 mb-2">
+      <FileText size={64} />
+      <Typography variant="h5" gutterBottom>
         Upload your PDF book
-      </h3>
-      <p className="text-gray-600 mb-4">
+      </Typography>
+      <Typography variant="body1" color="text.secondary" gutterBottom>
         Drag and drop your PDF file here, or click to browse
-      </p>
+      </Typography>
       
-      <div className="flex items-center justify-center">
-        <Upload className="h-5 w-5 mr-2 text-blue-600" />
-        <span className="text-blue-600 font-medium">Choose PDF file</span>
-      </div>
+      <Button
+        variant="contained"
+        startIcon={<Upload />}
+      >
+        Choose PDF file
+      </Button>
 
       <input
         ref={fileInputRef}
         type="file"
         accept=".pdf"
         onChange={handleFileSelect}
-        className="hidden"
+        style={{ display: 'none' }}
       />
-    </div>
+    </ContentCard>
   );
 };

@@ -1,6 +1,15 @@
 import React, { useState } from 'react';
 import { BookContent } from '../types';
-import { Edit2, Trash2, Save, X } from 'lucide-react';
+import {
+  TextField,
+  Button,
+  Typography,
+  Stack
+} from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SaveIcon from '@mui/icons-material/Save';
+import CloseIcon from '@mui/icons-material/Close';
 
 interface BookActionsProps {
   book: BookContent;
@@ -53,93 +62,93 @@ export const BookActions: React.FC<BookActionsProps> = ({
     setShowDeleteConfirm(false);
   };
 
-  if (isEditing) {
-    return (
-      <div className="space-y-3 p-3 bg-gray-50 rounded-lg">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Title
-          </label>
-          <input
-            type="text"
+  return (
+    <Stack spacing={2}>
+      {isEditing && (
+        <>
+          <TextField
+            label="Title"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Book title"
+            fullWidth
+            size="small"
           />
-        </div>
-        
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">
-            Author
-          </label>
-          <input
-            type="text"
+          <TextField
+            label="Author"
             value={author}
             onChange={(e) => setAuthor(e.target.value)}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder="Author name"
+            fullWidth
+            size="small"
           />
-        </div>
-        
-        <div className="flex space-x-2">
-          <button
-            onClick={handleSave}
-            className="flex items-center px-3 py-1.5 bg-green-600 text-white rounded-md hover:bg-green-700 text-sm"
-          >
-            <Save className="h-3 w-3 mr-1" />
-            Save
-          </button>
-          <button
-            onClick={handleCancel}
-            className="flex items-center px-3 py-1.5 bg-gray-600 text-white rounded-md hover:bg-gray-700 text-sm"
-          >
-            <X className="h-3 w-3 mr-1" />
-            Cancel
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex space-x-2">
-      <button
-        onClick={() => setIsEditing(true)}
-        className="flex items-center px-2 py-1 text-blue-600 hover:bg-blue-50 rounded text-sm"
-        title="Edit book"
-      >
-        <Edit2 className="h-3 w-3 mr-1" />
-        Edit
-      </button>
-      
-      {showDeleteConfirm ? (
-        <div className="flex items-center space-x-1">
-          <span className="text-xs text-red-600">Delete?</span>
-          <button
-            onClick={handleDelete}
-            disabled={isDeleting}
-            className="px-2 py-1 bg-red-600 text-white rounded text-xs hover:bg-red-700 disabled:opacity-50"
-          >
-            {isDeleting ? '...' : 'Yes'}
-          </button>
-          <button
-            onClick={() => setShowDeleteConfirm(false)}
-            className="px-2 py-1 bg-gray-600 text-white rounded text-xs hover:bg-gray-700"
-          >
-            No
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={() => setShowDeleteConfirm(true)}
-          className="flex items-center px-2 py-1 text-red-600 hover:bg-red-50 rounded text-sm"
-          title="Delete book"
-        >
-          <Trash2 className="h-3 w-3 mr-1" />
-          Delete
-        </button>
+        </>
       )}
-    </div>
+      
+      <Stack direction="row" spacing={1}>
+        {isEditing ? (
+          <>
+            <Button
+              onClick={handleSave}
+              variant="contained"
+              color="success"
+              size="small"
+              startIcon={<SaveIcon />}
+            >
+              Save
+            </Button>
+            <Button
+              onClick={handleCancel}
+              variant="outlined"
+              size="small"
+              startIcon={<CloseIcon />}
+            >
+              Cancel
+            </Button>
+          </>
+        ) : (
+          <>
+            <Button
+              onClick={() => setIsEditing(true)}
+              size="small"
+              startIcon={<EditIcon />}
+            >
+              Edit
+            </Button>
+            
+            {showDeleteConfirm ? (
+              <>
+                <Typography variant="caption" color="error">
+                  Delete?
+                </Typography>
+                <Button
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  size="small"
+                  color="error"
+                  variant="contained"
+                >
+                  {isDeleting ? '...' : 'Yes'}
+                </Button>
+                <Button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  size="small"
+                  variant="outlined"
+                >
+                  No
+                </Button>
+              </>
+            ) : (
+              <Button
+                onClick={() => setShowDeleteConfirm(true)}
+                size="small"
+                startIcon={<DeleteIcon />}
+                color="error"
+              >
+                Delete
+              </Button>
+            )}
+          </>
+        )}
+      </Stack>
+    </Stack>
   );
 };

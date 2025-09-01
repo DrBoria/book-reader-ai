@@ -4,6 +4,10 @@ import { useDropzone } from 'react-dropzone';
 import { useStore } from '../stores';
 import { useNavigate } from 'react-router-dom';
 import { booksService } from '../services/api';
+import { Typography, Button, LinearProgress, CircularProgress, Alert } from '@mui/material';
+import { Upload as UploadIcon, CheckCircle, Error, CloudUpload } from '@mui/icons-material';
+import { Container } from '../components/common/Container';
+import { ContentCard } from '../components/common/ContentCard';
 
 export const UploadPage: React.FC = observer(() => {
   const { bookStore, uiStore } = useStore();
@@ -39,16 +43,16 @@ export const UploadPage: React.FC = observer(() => {
       setUploadProgress(100);
       uiStore.setProcessingProgress(100);
 
-      bookStore.addBook(newBook);
+      await bookStore.createBook(newBook);
       setUploadStatus('success');
       
-      // Redirect to books page after successful upload
       setTimeout(() => {
         navigate('/books');
       }, 1000);
     } catch (error) {
       console.error('Upload failed:', error);
-      setErrorMessage(error instanceof Error ? error.message : 'Upload failed');
+      const errorMsg = error instanceof Error ? error.message || String(error) : 'Upload failed';
+      setErrorMessage(errorMsg);
       setUploadStatus('error');
     } finally {
       uiStore.setProcessing(false);
@@ -56,7 +60,7 @@ export const UploadPage: React.FC = observer(() => {
     }
   }, [bookStore, uiStore, navigate]);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps } = useDropzone({
     onDrop,
     accept: {
       'application/pdf': ['.pdf']
@@ -71,90 +75,78 @@ export const UploadPage: React.FC = observer(() => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Upload New Book</h2>
+    <Container type="narrow">
+      <Typography variant="h4" gutterBottom>
+        Upload New Book
+      </Typography>
       
-      <div className="max-w-2xl mx-auto">
+      <ContentCard type="page" fullWidth>
         {uploadStatus === 'idle' && (
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-lg p-12 text-center cursor-pointer transition-colors ${
-              isDragActive 
-                ? 'border-blue-500 bg-blue-50' 
-                : 'border-gray-300 hover:border-gray-400'
-            }`}
-          >
+          <div {...getRootProps()}>
             <input {...getInputProps()} />
-            <div className="space-y-4">
-              <svg
-                className="mx-auto h-12 w-12 text-gray-400"
-                stroke="currentColor"
-                fill="none"
-                viewBox="0 0 48 48"
-              >
-                <path
-                  d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02"
-                  strokeWidth={2}
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                />
-              </svg>
-              <div>
-                <p className="text-lg font-medium text-gray-900">
+            <ContentCard 
+              type="upload" 
+              elevation={1}
+              fullWidth
+              sx={{ cursor: 'pointer', '&:hover': { backgroundColor: 'action.hover' } }}
+            >
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <CloudUpload fontSize="large" />
+                <Typography variant="h6" gutterBottom>
                   Drop your PDF file here, or click to select
-                </p>
-                <p className="text-sm text-gray-500">
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
                   Maximum file size: 50MB
-                </p>
+                </Typography>
               </div>
-            </div>
+            </ContentCard>
           </div>
         )}
 
         {uploadStatus === 'uploading' && (
-          <div className="text-center space-y-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-lg font-medium">Uploading and processing...</p>
-            <div className="w-full bg-gray-200 rounded-full h-2">
-              <div 
-                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                style={{ width: `${uploadProgress}%` }}
-              ></div>
-            </div>
-            <p className="text-sm text-gray-600">{uploadProgress}%</p>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <CircularProgress />
+            <Typography variant="h6" gutterBottom>
+              Uploading and processing...
+            </Typography>
+            <LinearProgress variant="determinate" value={uploadProgress} />
+            <Typography variant="body2">
+              {uploadProgress}%
+            </Typography>
           </div>
         )}
 
         {uploadStatus === 'success' && (
-          <div className="text-center space-y-4">
-            <div className="rounded-full h-12 w-12 bg-green-100 flex items-center justify-center mx-auto">
-              <svg className="h-6 w-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium text-green-600">Upload successful!</p>
-            <p className="text-sm text-gray-600">Redirecting to books...</p>
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <CheckCircle color="success" />
+            <Typography variant="h6" gutterBottom>
+              Upload successful!
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Redirecting to books...
+            </Typography>
           </div>
         )}
 
         {uploadStatus === 'error' && (
-          <div className="text-center space-y-4">
-            <div className="rounded-full h-12 w-12 bg-red-100 flex items-center justify-center mx-auto">
-              <svg className="h-6 w-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </div>
-            <p className="text-lg font-medium text-red-600">Upload failed</p>
-            <p className="text-sm text-gray-600">{errorMessage}</p>
-            <button
+          <div style={{ textAlign: 'center', padding: '2rem' }}>
+            <Error color="error" />
+            <Typography variant="h6" gutterBottom>
+              Upload failed
+            </Typography>
+            <Alert severity="error" style={{ marginBottom: '1rem' }}>
+              {errorMessage}
+            </Alert>
+            <Button
+              variant="contained"
               onClick={resetUpload}
-              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+              startIcon={<UploadIcon />}
             >
               Try Again
-            </button>
+            </Button>
           </div>
         )}
-      </div>
-    </div>
+      </ContentCard>
+    </Container>
   );
 });

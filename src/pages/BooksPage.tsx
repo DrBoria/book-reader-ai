@@ -4,6 +4,9 @@ import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores';
 import { BookSelector } from '../components/BookSelector';
 import { BookOverview } from '../components/BookOverview';
+import { Typography } from '@mui/material';
+import { Container } from '../components/common/Container';
+import { ContentCard } from '../components/common/ContentCard';
 
 export const BooksPage: React.FC = observer(() => {
   const { bookStore, tagStore, uiStore } = useStore();
@@ -42,8 +45,10 @@ export const BooksPage: React.FC = observer(() => {
   };
 
   return (
-    <div className="p-6">
-      <h2 className="text-2xl font-bold mb-6">Books</h2>
+    <Container type="page">
+      <Typography variant="h4" gutterBottom>
+        Books
+      </Typography>
       <BookSelector
         books={Array.from(bookStore.books)}
         currentBook={bookStore.currentBook || null}
@@ -54,15 +59,16 @@ export const BooksPage: React.FC = observer(() => {
       />
       
       {bookStore.currentBook && (
-        <div className="mt-6">
-          <h3 className="text-xl font-semibold mb-4">
+        <ContentCard type="page" fullWidth sx={{ mt: 2 }}>
+          <Typography variant="h5" gutterBottom>
             Current Book: {bookStore.currentBook.title}
-          </h3>          <BookOverview
+          </Typography>
+          <BookOverview
             book={bookStore.currentBook}
             tags={Array.from(tagStore.tags)}
           />
-        </div>
+        </ContentCard>
       )}
-    </div>
+    </Container>
   );
 });
