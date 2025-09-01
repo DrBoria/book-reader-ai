@@ -15,9 +15,9 @@ import {
 } from '@mui/material';
 import { FileText, Quote, Star } from "lucide-react";
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
-import { TaggedContent as TaggedContentType, Tag } from "../types";
-import { ContentCard } from './common/ContentCard';
-import { EmptyState } from './common/EmptyState';
+import { TaggedContent as TaggedContentType, Tag } from "../../types";
+import { ContentCard } from '../common/ContentCard';
+import { EmptyState } from '../common/EmptyState';
 
 interface TaggedContentProps {
   taggedContent: TaggedContentType[];

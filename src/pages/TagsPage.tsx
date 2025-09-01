@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores';
-import { TagPanel } from '../components/TagPanel';
-import { TaggedContentDisplay } from '../components/TaggedContentDisplay';
-import { AddCategoryModal } from '../components/AddCategoryModal';
+import { TagPanel } from '../components/Tag/TagPanel';
+import { TaggedContentDisplay } from '../components/Tag/TaggedContentDisplay';
+import { AddCategoryModal } from '../components/Modal/AddCategoryModal';
 import { Typography, Button } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
 import { Container } from '../components/common/Container';

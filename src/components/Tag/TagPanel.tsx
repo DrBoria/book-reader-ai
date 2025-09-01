@@ -1,15 +1,13 @@
 import React, { useState, useMemo } from "react";
-import { Tag, TaggedContent, TagCategory } from "../types";
+import { Tag, TaggedContent, TagCategory } from "../../types";
 import {
   Typography,
-  Button,
   Chip,
   List,
   ListItem,
-  ListItemText,
   TextField
 } from '@mui/material';
-import { Modal } from './common/Modal';
+import { Modal } from '../Modal/Modal';
 
 interface TagPanelProps {
   tags: Tag[];

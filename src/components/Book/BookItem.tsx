@@ -1,8 +1,8 @@
 import React from 'react';
 import { Typography } from '@mui/material';
-import { BookContent } from '../types';
+import { BookContent } from '../../types';
 import { BookActions } from './BookActions';
-import { ContentCard } from './common/ContentCard';
+import { ContentCard } from '../common/ContentCard';
 
 interface BookItemProps {
   book: BookContent;

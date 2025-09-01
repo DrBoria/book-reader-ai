@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Tag, TagCategory } from "../types";
+import { Tag, TagCategory } from "../../types";
 import {
   Typography,
   Button,
@@ -13,7 +13,7 @@ import {
   ListItemText
 } from '@mui/material';
 import { Add as AddIcon } from '@mui/icons-material';
-import { Modal } from './common/Modal';
+import { Modal } from '../Modal/Modal';
 
 interface TagManagerProps {
   tags: Tag[];

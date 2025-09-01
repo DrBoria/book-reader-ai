@@ -9,7 +9,7 @@ import {
   Box,
   Stack
 } from '@mui/material';
-import { Modal } from './common/Modal';
+import { Modal } from './Modal';
 
 interface AddCategoryModalProps {
   isOpen: boolean;

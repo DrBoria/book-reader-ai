@@ -2,7 +2,7 @@ import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { useStore } from '../stores';
 import { SearchScope } from '../components/SearchScope';
-import { ChatInterface } from '../components/ChatInterface';
+import { ChatInterface } from '../components/Chat/ChatInterface';
 import { useNavigate } from 'react-router-dom';
 import { Typography, Button } from '@mui/material';
 import { Upload as UploadIcon } from '@mui/icons-material';

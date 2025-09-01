@@ -1,9 +1,9 @@
 import React from "react";
 import { observer } from "mobx-react-lite";
-import { BookContent, Tag } from "../types";
+import { BookContent, Tag } from "../../types";
 import { Typography, List, ListItem, Chip, Container } from "@mui/material";
 import { BookOpen } from "lucide-react";
-import { ContentCard } from "./common/ContentCard";
+import { ContentCard } from "../common/ContentCard";
 
 interface BookOverviewProps {
   book: BookContent | null;

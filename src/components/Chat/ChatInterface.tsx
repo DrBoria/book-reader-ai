@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
-import { ChatMessage } from "../types";
-import { bookService } from "../services/bookService";
+import { ChatMessage } from "../../types";
+import { bookService } from "../../services/bookService";
 import { Box, Typography } from "@mui/material";
 import { MessageCircle } from "lucide-react";
 import { MessageList } from "./MessageList";

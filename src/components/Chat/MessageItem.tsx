@@ -1,8 +1,8 @@
 import React from 'react';
-import { ChatMessage } from '../types';
+import { ChatMessage } from '../../types';
 import { Typography, Paper, Chip, Collapse, IconButton, List, ListItem } from '@mui/material';
 import { Bot, User, ChevronDown, ChevronUp } from 'lucide-react';
-import { ContentCard } from './common/ContentCard';
+import { ContentCard } from '../common/ContentCard';
 
 interface MessageItemProps {
   message: ChatMessage;

@@ -1,4 +1,4 @@
-# Book Reader AI Agent
+# MD Book Reader
 
 AI-powered book analysis system with real-time tagging and intelligent chat interface.
 

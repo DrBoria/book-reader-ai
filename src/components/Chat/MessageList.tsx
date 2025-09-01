@@ -1,6 +1,6 @@
 import React from 'react';
 import { List } from '@mui/material';
-import { ChatMessage } from '../types';
+import { ChatMessage } from '../../types';
 import { MessageItem } from './MessageItem';
 
 interface MessageListProps {

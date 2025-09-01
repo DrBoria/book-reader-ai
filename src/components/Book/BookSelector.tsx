@@ -1,9 +1,9 @@
 import React from 'react';
-import { BookContent } from '../types';
+import { BookContent } from '../../types';
 import { Book, Plus } from 'lucide-react';
 import { BookActions } from './BookActions';
 import { Typography, Button, Paper, List, ListItem, ListItemText, ListItemButton } from '@mui/material';
-import { ContentCard } from './common/ContentCard';
+import { ContentCard } from '../common/ContentCard';
 
 interface BookSelectorProps {
   books: BookContent[];

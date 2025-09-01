@@ -2,7 +2,7 @@ import React from 'react';
 import { observer } from 'mobx-react-lite';
 import { Typography } from '@mui/material';
 import { useStore } from '../stores';
-import { TagManager } from '../components/TagManager';
+import { TagManager } from '../components/Tag/TagManager';
 import { TagCategory } from '../types';
 import { Container } from '../components/common/Container';
 

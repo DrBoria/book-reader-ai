@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 Setting up Book Reader AI development environment..."
+echo "🚀 Setting up MD Book Reader development environment..."
 
 # Check if Docker is running
 if ! docker info > /dev/null 2>&1; then

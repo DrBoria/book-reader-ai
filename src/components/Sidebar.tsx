@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import {
-  Drawer,
   List,
   ListItem,
   ListItemButton,
@@ -11,7 +10,8 @@ import {
   Typography,
   Chip
 } from '@mui/material';
-import { Book, Tag, MessageSquare, Upload, Settings, FileText, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Container } from '../components/common/Container';
+import { Book, Tag, MessageSquare, Upload, Settings, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useStore } from '../stores';
 
 export const Sidebar: React.FC = () => {
@@ -31,33 +31,58 @@ export const Sidebar: React.FC = () => {
   };
 
   return (
-    <Drawer variant="permanent">
-      <List>
-        <ListItem>
+    <Container
+      type="sidebar"
+      sx={{
+        width: isExpanded ? 240 : 64,
+        height: '100vh',
+        borderRight: '1px solid',
+        borderColor: 'divider',
+        display: 'flex',
+        flexDirection: 'column',
+        transition: 'width 0.2s ease-in-out',
+        overflow: 'hidden',
+        p: 0
+      }}
+    >
+      <List sx={{ flex: 1 }}>
+        <ListItem sx={{ justifyContent: 'space-between', px: 2, py: 1 }}>
           {isExpanded && (
-            <Typography variant="h6">
-              Book Reader AI
+            <Typography variant="h6" sx={{ fontSize: '1.1rem' }}>
+              MD Book Reader
             </Typography>
           )}
-          <IconButton onClick={toggleSidebar}>
-            {isExpanded ? <ChevronLeft /> : <ChevronRight />}
+          <IconButton onClick={toggleSidebar} size="small">
+            {isExpanded ? <ChevronLeft size={20} /> : <ChevronRight size={20} />}
           </IconButton>
         </ListItem>
 
         {menuItems.map(({ path, label, icon: Icon }) => (
-          <ListItem key={path} disablePadding>
-            <NavLink to={path} style={{ textDecoration: 'none', color: 'inherit' }}>
+          <ListItem key={path} disablePadding sx={{ mb: 0.5 }}>
+            <NavLink to={path} style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
               {({ isActive }) => (
-                <ListItemButton selected={isActive}>
-                  <ListItemIcon>
-                    <Icon />
+                <ListItemButton
+                  selected={isActive}
+                  sx={{
+                    mx: 1,
+                    borderRadius: 1,
+                    justifyContent: isExpanded ? 'flex-start' : 'center',
+                    px: isExpanded ? 2 : 1
+                  }}
+                >
+                  <ListItemIcon sx={{ minWidth: isExpanded ? 40 : 'auto', justifyContent: 'center' }}>
+                    <Icon size={20} />
                   </ListItemIcon>
-                  {isExpanded && <ListItemText primary={label} />}
-                  {isExpanded && label === 'Books' && bookStore.books.length > 0 && (
-                    <Chip label={bookStore.books.length} size="small" />
-                  )}
-                  {isExpanded && label === 'Tags' && tagStore.tags.length > 0 && (
-                    <Chip label={tagStore.tags.length} size="small" />
+                  {isExpanded && (
+                    <>
+                      <ListItemText primary={label} sx={{ ml: -1 }} />
+                      {(label === 'Books' && bookStore.books.length > 0) && (
+                        <Chip label={bookStore.books.length} size="small" sx={{ ml: 'auto' }} />
+                      )}
+                      {(label === 'Tags' && tagStore.tags.length > 0) && (
+                        <Chip label={tagStore.tags.length} size="small" sx={{ ml: 'auto' }} />
+                      )}
+                    </>
                   )}
                 </ListItemButton>
               )}
@@ -65,6 +90,6 @@ export const Sidebar: React.FC = () => {
           </ListItem>
         ))}
       </List>
-    </Drawer>
+    </Container>
   );
 };

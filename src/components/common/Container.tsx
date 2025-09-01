@@ -9,10 +9,17 @@ interface ContainerProps extends Omit<MuiContainerProps, 'children'> {
 export const Container = ({ children, type = 'page', ...props }: ContainerProps) => {
   const maxWidth = type === 'modal' ? 'sm' : 
                    type === 'narrow' ? 'md' : 
+                   type === 'sidebar' ? false :
                    type === 'full' ? false : 'lg';
   
   return (
-    <MuiContainer maxWidth={maxWidth} {...props}>
+    <MuiContainer 
+      maxWidth={maxWidth} 
+      {...props} 
+      sx={{
+        ...props.sx,
+      }}
+    >
       {children}
     </MuiContainer>
   );
