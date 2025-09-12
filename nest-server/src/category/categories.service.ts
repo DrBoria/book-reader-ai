@@ -42,7 +42,23 @@ export class CategoriesService {
   }
 
   async findByName(name: string): Promise<Category | null> {
-    return await this.categoryRepository.findOne({  name });
+    return await this.categoryRepository.findOne({ name });
+  }
+
+  async update(id: string, updateCategoryDto: any): Promise<Category | null> {
+    const category = await this.categoryRepository.findOne({ id });
+    if (!category) return null;
+
+    Object.assign(category, updateCategoryDto);
+    return await this.categoryRepository.save(category);
+  }
+
+  async remove(id: string): Promise<Category | null> {
+    const category = await this.categoryRepository.findOne({ id });
+    if (!category) return null;
+
+    await this.categoryRepository.delete(category);
+    return category;
   }
 
   async getDefaultCategories(): Promise<Category[]> {

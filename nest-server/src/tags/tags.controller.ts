@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Param,
   Post,
@@ -56,5 +57,10 @@ export class TagsController {
     }
     const content = await this.taggedContentService.findByTagId(tagId);
     return { count: content.length };
+  }
+
+  @Delete(':id')
+  async deleteTag(@Param('id') id: string) {
+    return this.tagService.remove(id);
   }
 }

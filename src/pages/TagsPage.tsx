@@ -23,11 +23,11 @@ export const TagsPage: React.FC = observer(() => {
   };
 
   const handleDeleteTag = async (tagId: string) => {
-    tagStore.deleteTag(tagId);
+    tagStore.removeTag(tagId);
   };
 
   const handleBulkDeleteTags = async (tagIds: string[]) => {
-    tagIds.forEach(id => tagStore.deleteTag(id));
+    tagIds.forEach(id => tagStore.removeTag(id));
   };
 
   const handleAddCustomCategory = async (categoryData: {

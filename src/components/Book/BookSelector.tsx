@@ -4,6 +4,7 @@ import { Book, Plus } from 'lucide-react';
 import { BookActions } from './BookActions';
 import { Typography, Button, Paper, List, ListItem, ListItemText, ListItemButton } from '@mui/material';
 import { ContentCard } from '../common/ContentCard';
+import { observer } from 'mobx-react-lite';
 
 interface BookSelectorProps {
   books: BookContent[];
@@ -14,7 +15,7 @@ interface BookSelectorProps {
   onDeleteBook: (bookId: string) => Promise<boolean>;
 }
 
-export const BookSelector: React.FC<BookSelectorProps> = ({
+export const BookSelector: React.FC<BookSelectorProps> = observer(({
   books,
   currentBook,
   onBookSelect,
@@ -27,7 +28,7 @@ export const BookSelector: React.FC<BookSelectorProps> = ({
       <Typography variant="h6" gutterBottom>
         Books ({books.length})
       </Typography>
-      
+
       <Button
         variant="contained"
         size="small"
@@ -81,4 +82,4 @@ export const BookSelector: React.FC<BookSelectorProps> = ({
       )}
     </ContentCard>
   );
-};
+});

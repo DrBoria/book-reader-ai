@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
   TextField,
@@ -10,22 +10,25 @@ import {
   Stack
 } from '@mui/material';
 import { Modal } from './Modal';
+import { TagCategory } from '../../types';
 
-interface AddCategoryModalProps {
+interface EditCategoryModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAddCategory: (categoryData: {
+  onUpdateCategory: (categoryId: string, categoryData: {
     name: string;
     description?: string;
     color?: string;
     dataType?: 'text' | 'date' | 'number';
   }) => Promise<void>;
+  category: TagCategory | null;
 }
 
-export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
+export const EditCategoryModal: React.FC<EditCategoryModalProps> = ({
   isOpen,
   onClose,
-  onAddCategory,
+  onUpdateCategory,
+  category,
 }) => {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -33,24 +36,30 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
   const [dataType, setDataType] = useState<'text' | 'date' | 'number'>('text');
   const [isLoading, setIsLoading] = useState(false);
 
+  useEffect(() => {
+    if (category) {
+      setName(category.name);
+      setDescription(category.description || '');
+      setColor(category.color || '#3B82F6');
+      const mappedDataType = category.dataType === 'string' ? 'text' : category.dataType;
+      setDataType(mappedDataType as 'text' | 'date' | 'number' || 'text');
+    }
+  }, [category]);
+
   const handleSubmit = async () => {
-    if (!name.trim()) return;
+    if (!name.trim() || !category) return;
 
     setIsLoading(true);
     try {
-      await onAddCategory({
+      await onUpdateCategory(category.id, {
         name: name.trim(),
         description: description.trim() || undefined,
         color,
         dataType,
       });
       onClose();
-      setName('');
-      setDescription('');
-      setColor('#3B82F6');
-      setDataType('text');
     } catch (error) {
-      console.error('Failed to add category:', error);
+      console.error('Failed to update category:', error);
     } finally {
       setIsLoading(false);
     }
@@ -60,7 +69,7 @@ export const AddCategoryModal: React.FC<AddCategoryModalProps> = ({
     <Modal
       open={isOpen}
       onClose={onClose}
-      title="Add New Category"
+      title="Edit Category"
       onSubmit={handleSubmit}
       disabled={isLoading || !name.trim()}
       isLoading={isLoading}

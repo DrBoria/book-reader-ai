@@ -84,12 +84,15 @@ export const TagPanel: React.FC<TagPanelProps> = ({
         open={!!deleteConfirm}
         onClose={() => setDeleteConfirm(null)}
         title="Delete Tag"
-        onSave={async () => {
+        onSubmit={async () => {
           if (deleteConfirm) {
             await onDeleteTag(deleteConfirm);
             setDeleteConfirm(null);
           }
         }}
+        submitText="Delete"
+        submitButtonColor="error"
+        cancelText="Cancel"
       >
         <Typography>Are you sure you want to delete this tag?</Typography>
       </Modal>

@@ -41,10 +41,8 @@ export const BookStore = types
     isLoading: types.boolean,
   })
   .actions((self) => ({
-    setBooks(books: (Instance<typeof Book> | any)[]) {
-      const mstBooks = books.map((book) => 
-        Book.is(book) ? book : Book.create(book)
-      );
+    setBooks(books: any[]) {
+      const mstBooks = books.map((book) => Book.create(book));
       self.books.replace(mstBooks);
     },
     setCurrentBook(book: Instance<typeof Book> | undefined) {
@@ -116,14 +114,18 @@ export const BookStore = types
       }
     })
   })).actions((self) => ({
-    createBook: flow(function* (bookData: any) {
+    updateBook: flow(function* (id: string, updates: { title?: string; author?: string }) {
       try {
-        const newBook = yield bookService.createBook(bookData);
-        const mstBook = Book.create(mapApiBookToMstBook(newBook));
-        self.books.push(mstBook);
-        return mstBook;
+        const success = yield bookService.updateBook(id, updates);
+        if (success) {
+          const book = self.books.find(b => b.id === id);
+          if (book) {
+            Object.assign(book, updates);
+          }
+        }
+        return success;
       } catch (error) {
-        console.error('Failed to create book:', error);
+        console.error('Failed to update book:', error);
         throw error;
       }
     }),

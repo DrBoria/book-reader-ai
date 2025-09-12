@@ -78,3 +78,15 @@ export interface TagCloud {
   count: number;
   weight: number;
 }
+
+export interface ProcessingJob {
+  id: string;
+  bookId: string;
+  status: 'pending' | 'processing' | 'completed' | 'error';
+  progress: number;
+  currentPage: number;
+  totalPages: number;
+  message?: string;
+  createdAt: Date;
+  updatedAt: Date;
+}

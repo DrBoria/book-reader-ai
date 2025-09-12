@@ -6,7 +6,7 @@ declare global {
   }
 }
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:3001/api';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:4000/api';
 
 export interface ApiResponse<T> {
   data?: T;
@@ -62,6 +62,13 @@ class ApiClient {
   async put<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
     return this.request<T>(endpoint, {
       method: 'PUT',
+      body: body ? JSON.stringify(body) : undefined,
+    });
+  }
+
+  async patch<T>(endpoint: string, body?: any): Promise<ApiResponse<T>> {
+    return this.request<T>(endpoint, {
+      method: 'PATCH',
       body: body ? JSON.stringify(body) : undefined,
     });
   }
@@ -200,7 +207,7 @@ export class BooksService {
   }
 
   async updateBook(id: string, updates: Partial<CreateBookDto>): Promise<Book> {
-    const response = await this.client.post<Book>(`/books/${id}`, updates);
+    const response = await this.client.patch<Book>(`/books/${id}`, updates);
     if (response.error) throw new Error(response.error);
     return response.data!;
   }
@@ -264,6 +271,12 @@ export class CategoriesService {
 
   async createCategory(category: CreateCategoryDto): Promise<Category> {
     const response = await this.client.post<Category>('/category', category);
+    if (response.error) throw new Error(response.error);
+    return response.data!;
+  }
+
+  async updateCategory(id: string, category: Partial<CreateCategoryDto>): Promise<Category> {
+    const response = await this.client.patch<Category>(`/category/${id}`, category);
     if (response.error) throw new Error(response.error);
     return response.data!;
   }

@@ -57,4 +57,12 @@ export class TagsService {
 
     return tag;
   }
+
+  async remove(id: string): Promise<Tag | null> {
+    const tag = await this.tagRepository.findOne({ id });
+    if (!tag) return null;
+
+    await this.tagRepository.delete(tag);
+    return tag;
+  }
 }

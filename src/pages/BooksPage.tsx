@@ -35,12 +35,17 @@ export const BooksPage: React.FC = observer(() => {
   };
 
   const handleUpdateBook = async (bookId: string, updates: { title?: string; author?: string }) => {
-    bookStore.updateBook(bookId, updates);
-    return true;
+    try {
+      await bookStore.updateBook(bookId, updates);
+      return true;
+    } catch (error) {
+      console.error('Failed to update book:', error);
+      return false;
+    }
   };
 
   const handleDeleteBook = async (bookId: string) => {
-    bookStore.deleteBook(bookId);
+    await bookStore.removeBook(bookId);
     return true;
   };
 

@@ -1,35 +1,17 @@
 import { types, Instance, flow } from 'mobx-state-tree';
 import { categoriesService, Category as ApiCategory } from '../services/api';
 
-const parseApiDate = (dateInput: string | { year: { low: number; high: number }; month: { low: number; high: number }; day: { low: number; high: number }; hour: { low: number; high: number }; minute: { low: number; high: number }; second: { low: number; high: number }; nanosecond: { low: number; high: number }; timeZoneOffsetSeconds: { low: number; high: number } }): Date => {
-  if (typeof dateInput === 'string') {
-    return new Date(dateInput);
-  }
-  if (typeof dateInput === 'object' && dateInput.year) {
-    return new Date(
-      dateInput.year.low,
-      dateInput.month.low - 1,
-      dateInput.day.low,
-      dateInput.hour.low,
-      dateInput.minute.low,
-      dateInput.second.low,
-      Math.floor(dateInput.nanosecond.low / 1000000)
-    );
-  }
-  return new Date();
-};
-
-const mapApiCategoryToMstCategory = (apiCategory: ApiCategory) => ({
+const mapApiCategoryToMstCategory = (apiCategory: ApiCategory): any => ({
   id: apiCategory.id,
   name: apiCategory.name,
   description: apiCategory.description || '',
   color: apiCategory.color || '',
-  dataType: apiCategory.dataType || 'text',
+  dataType: apiCategory.dataType === 'string' ? 'text' : (apiCategory.dataType || 'text'),
   keywords: apiCategory.keywords || [],
   type: apiCategory.type || 'default',
   tags: apiCategory.tags || [],
-  createdAt: parseApiDate(apiCategory.createdAt),
-  updatedAt: parseApiDate(apiCategory.updatedAt),
+  createdAt: new Date(apiCategory.createdAt),
+  updatedAt: new Date(apiCategory.updatedAt),
 });
 
 export const Category = types.model('Category', {
@@ -82,19 +64,39 @@ export const CategoryStore = types
 
     createCategory: flow(function* (categoryData: { name: string; description?: string; color?: string; dataType?: 'text' | 'date' | 'number' | 'string'; keywords?: string[]; type?: 'default' | 'custom' | 'system' }) {
       try {
-        const apiCategory: ApiCategory = yield categoriesService.createCategory({
+        const apiData = {
           name: categoryData.name,
           description: categoryData.description,
           color: categoryData.color,
-          dataType: categoryData.dataType,
+          dataType: categoryData.dataType === 'string' ? 'text' : categoryData.dataType,
           keywords: categoryData.keywords,
           type: categoryData.type,
-        });
+        };
+        const apiCategory: ApiCategory = yield categoriesService.createCategory(apiData);
         const mstCategory = mapApiCategoryToMstCategory(apiCategory);
         self.addCategory(mstCategory);
         return mstCategory;
       } catch (error) {
         console.error('Failed to create category:', error);
+        throw error;
+      }
+    }),
+
+    updateCategory: flow(function* (id: string, categoryData: { name?: string; description?: string; color?: string; dataType?: 'text' | 'date' | 'number' | 'string'; keywords?: string[] }) {
+      try {
+        const apiData = {
+          ...categoryData,
+          dataType: categoryData.dataType === 'string' ? 'text' : categoryData.dataType
+        };
+        const apiCategory: ApiCategory = yield categoriesService.updateCategory(id, apiData);
+        const mstCategory = mapApiCategoryToMstCategory(apiCategory);
+        const index = self.categories.findIndex(c => c.id === id);
+        if (index !== -1) {
+          self.categories[index] = mstCategory;
+        }
+        return mstCategory;
+      } catch (error) {
+        console.error('Failed to update category:', error);
         throw error;
       }
     }),

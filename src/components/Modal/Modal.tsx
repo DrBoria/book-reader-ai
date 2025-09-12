@@ -5,9 +5,14 @@ interface ModalProps {
   onClose: () => void;
   title: string;
   children: React.ReactNode;
-  onSave?: () => void;
-  saveDisabled?: boolean;
-  saveLoading?: boolean;
+  onSubmit?: () => void;
+  disabled?: boolean;
+  isLoading?: boolean;
+  submitText?: string;
+  cancelText?: string;
+  showSubmit?: boolean;
+  submitButtonVariant?: 'contained' | 'outlined' | 'text';
+  submitButtonColor?: 'primary' | 'secondary' | 'success' | 'error' | 'warning' | 'info';
 }
 
 export const Modal: React.FC<ModalProps> = ({
@@ -15,22 +20,28 @@ export const Modal: React.FC<ModalProps> = ({
   onClose,
   title,
   children,
-  onSave,
-  saveDisabled,
-  saveLoading
+  onSubmit,
+  disabled,
+  isLoading,
+  submitText = 'Save',
+  cancelText = 'Cancel',
+  showSubmit = true,
+  submitButtonVariant = 'contained',
+  submitButtonColor = 'primary'
 }) => (
   <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
     <DialogTitle>{title}</DialogTitle>
     <DialogContent>{children}</DialogContent>
     <DialogActions>
-      <Button onClick={onClose}>Cancel</Button>
-      {onSave && (
+      <Button onClick={onClose}>{cancelText}</Button>
+      {showSubmit && onSubmit && (
         <Button 
-          onClick={onSave} 
-          disabled={saveDisabled || saveLoading}
-          variant="contained"
+          onClick={onSubmit} 
+          disabled={disabled || isLoading}
+          variant={submitButtonVariant}
+          color={submitButtonColor}
         >
-          {saveLoading ? 'Saving...' : 'Save'}
+          {isLoading ? 'Loading...' : submitText}
         </Button>
       )}
     </DialogActions>

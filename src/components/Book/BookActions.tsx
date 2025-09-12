@@ -8,8 +8,7 @@ import {
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import SaveIcon from '@mui/icons-material/Save';
-import CloseIcon from '@mui/icons-material/Close';
+import { Modal } from '../Modal/Modal';
 
 interface BookActionsProps {
   book: BookContent;
@@ -22,9 +21,9 @@ export const BookActions: React.FC<BookActionsProps> = ({
   onUpdate,
   onDelete
 }) => {
-  const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(book.title);
   const [author, setAuthor] = useState(book.author || '');
+  const [isEditing, setIsEditing] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -33,7 +32,7 @@ export const BookActions: React.FC<BookActionsProps> = ({
     
     if (title !== book.title) updates.title = title;
     if (author !== book.author) updates.author = author;
-    
+
     if (Object.keys(updates).length > 0) {
       const success = await onUpdate(book.id, updates);
       if (success) {
@@ -46,7 +45,7 @@ export const BookActions: React.FC<BookActionsProps> = ({
     }
   };
 
-  const handleCancel = () => {
+  const handleCancelEdit = () => {
     setTitle(book.title);
     setAuthor(book.author || '');
     setIsEditing(false);
@@ -63,9 +62,35 @@ export const BookActions: React.FC<BookActionsProps> = ({
   };
 
   return (
-    <Stack spacing={2}>
-      {isEditing && (
-        <>
+    <>
+      <Stack direction="row" spacing={1}>
+        <Button
+          onClick={() => setIsEditing(true)}
+          size="small"
+          startIcon={<EditIcon />}
+        >
+          Edit
+        </Button>
+        
+        <Button
+          onClick={() => setShowDeleteConfirm(true)}
+          size="small"
+          startIcon={<DeleteIcon />}
+          color="error"
+        >
+          Delete
+        </Button>
+      </Stack>
+
+      <Modal
+        open={isEditing}
+        onClose={handleCancelEdit}
+        title="Edit Book"
+        onSubmit={handleSave}
+        disabled={isDeleting}
+        isLoading={isDeleting}
+      >
+        <Stack spacing={2}>
           <TextField
             label="Title"
             value={title}
@@ -80,75 +105,21 @@ export const BookActions: React.FC<BookActionsProps> = ({
             fullWidth
             size="small"
           />
-        </>
-      )}
-      
-      <Stack direction="row" spacing={1}>
-        {isEditing ? (
-          <>
-            <Button
-              onClick={handleSave}
-              variant="contained"
-              color="success"
-              size="small"
-              startIcon={<SaveIcon />}
-            >
-              Save
-            </Button>
-            <Button
-              onClick={handleCancel}
-              variant="outlined"
-              size="small"
-              startIcon={<CloseIcon />}
-            >
-              Cancel
-            </Button>
-          </>
-        ) : (
-          <>
-            <Button
-              onClick={() => setIsEditing(true)}
-              size="small"
-              startIcon={<EditIcon />}
-            >
-              Edit
-            </Button>
-            
-            {showDeleteConfirm ? (
-              <>
-                <Typography variant="caption" color="error">
-                  Delete?
-                </Typography>
-                <Button
-                  onClick={handleDelete}
-                  disabled={isDeleting}
-                  size="small"
-                  color="error"
-                  variant="contained"
-                >
-                  {isDeleting ? '...' : 'Yes'}
-                </Button>
-                <Button
-                  onClick={() => setShowDeleteConfirm(false)}
-                  size="small"
-                  variant="outlined"
-                >
-                  No
-                </Button>
-              </>
-            ) : (
-              <Button
-                onClick={() => setShowDeleteConfirm(true)}
-                size="small"
-                startIcon={<DeleteIcon />}
-                color="error"
-              >
-                Delete
-              </Button>
-            )}
-          </>
-        )}
-      </Stack>
-    </Stack>
+        </Stack>
+      </Modal>
+
+      <Modal
+        open={showDeleteConfirm}
+        onClose={() => setShowDeleteConfirm(false)}
+        title="Delete Book"
+        onSubmit={handleDelete}
+        disabled={isDeleting}
+        isLoading={isDeleting}
+        submitText="Delete"
+        submitButtonColor="error"
+      >
+        <Typography>Are you sure you want to delete this book?</Typography>
+      </Modal>
+    </>
   );
 };

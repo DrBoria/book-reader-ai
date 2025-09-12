@@ -59,7 +59,7 @@ export class BookService {
   }
 
   async updateBook(bookId: string, updates: { title?: string; author?: string }): Promise<boolean> {
-    const response = await apiClient.put(`/books/${bookId}`, updates);
+    const response = await apiClient.patch(`/books/${bookId}`, updates);
     
     if (response.error) {
       console.error('Failed to update book:', response.error);

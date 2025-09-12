@@ -17,6 +17,8 @@ export const UploadPage: React.FC = observer(() => {
   const [errorMessage, setErrorMessage] = useState('');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
+    debugger;
+    
     const file = acceptedFiles[0];
     if (!file) return;
 
@@ -39,11 +41,11 @@ export const UploadPage: React.FC = observer(() => {
       formData.append('title', file.name.replace('.pdf', ''));
       formData.append('author', 'Unknown');
 
-      const newBook = await booksService.uploadBook(file);
+      await booksService.uploadBook(file);
       setUploadProgress(100);
       uiStore.setProcessingProgress(100);
 
-      await bookStore.createBook(newBook);
+      await bookStore.loadBooks();
       setUploadStatus('success');
       
       setTimeout(() => {
